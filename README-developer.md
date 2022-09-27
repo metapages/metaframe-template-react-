@@ -56,7 +56,7 @@ That's it. Commands are self-documenting: just type `just`
    - single command publishing to [npm](https://www.npmjs.com/)
    - single command publishing to [github pages](https://pages.github.com/)
    - `vite` for fast building
-   - `preact` for efficient, fast loading sites
+   - `react` for efficient, fast loading sites
    - `typescript` for type checking
    - `chakra-ui.com` for the UI framework
    - `just` for a single method to build/test/deploy/publish

@@ -28,16 +28,16 @@
     "@metapages/hash-query": "^0.4.5",
     "@metapages/metaframe-hook": "^1.0.11",
     "@metapages/metapage": "^0.13.5",
+    "formik": "^2.2.9",
     "framer-motion": "^7.3.6",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.4.1"
+    "yup": "^0.32.11"
   },
   "devDependencies": {
     "@types/node": "^12.20.10",
     "@types/react": "^18.0.21",
     "@types/react-dom": "^18.0.6",
-    "@types/react-router-dom": "^5.3.3",
     "@vitejs/plugin-react": "^2.1.0",
     "typescript": "^4.8.3",
     "vite": "^3.1.3"

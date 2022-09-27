@@ -8,10 +8,10 @@ const container = document.getElementById("root");
 const root = createRoot(container!);
 root.render(
   <StrictMode>
-        <ChakraProvider>
-        <WithMetaframe>
-          <App />
-          </WithMetaframe>
-        </ChakraProvider>
+    <ChakraProvider>
+      <WithMetaframe>
+        <App />
+      </WithMetaframe>
+    </ChakraProvider>
   </StrictMode>
 );

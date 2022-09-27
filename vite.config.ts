@@ -1,5 +1,3 @@
-// Reference: https://miyauchi.dev/posts/vite-preact-typescript/
-
 import fs from "fs";
 import { resolve } from "path";
 import { defineConfig } from "vite";

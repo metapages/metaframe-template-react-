@@ -5,7 +5,11 @@ import {
 import { Badge } from "@chakra-ui/react";
 import { MetaframeEvents, MetaframeInputMap } from "@metapages/metapage";
 
-export const MetaframeOutputsRaw: React.FC = () => {
+/**
+ * Just an example very basic output of incoming inputs
+ *
+ */
+export const PanelMain: React.FC = () => {
   // This is currently the most performant way to get metaframe
   // inputs and cleanup properly
   const metaframeObject = useMetaframe();
