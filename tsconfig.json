@@ -30,7 +30,7 @@
     "strictNullChecks": true,
     "target": "ESNext",
     "typeRoots": ["./node_modules/@types", "./src/types"],
-    "types": ["vite/client"],
+    "types": ["vite/client", "unplugin-icons/types/react"],
   },
   "exclude": ["node_modules", "dist"],
   "include": ["./src/**/*"]

@@ -2,6 +2,8 @@ import fs from "fs";
 import { resolve } from "path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import Icons from "unplugin-icons/vite";
+import { FileSystemIconLoader } from "unplugin-icons/loaders";
 
 type DeployTargetType = "glitch" | "lib";
 // values acted on: [glitch | lib]
@@ -29,7 +31,35 @@ export default defineConfig(({ command, mode }) => ({
       "/@": resolve(__dirname, "./src"),
     },
   },
-  plugins: [react()],
+  plugins: [
+    react(),
+    Icons({
+      compiler: 'jsx',
+      jsx: 'react',
+      // autoInstall: true,
+      customCollections: {
+        // key as the collection name
+        // 'my-icons': {
+        //   // account: '<svg><!-- ... --></svg>',
+        //   // load your custom icon lazily
+        //   metapage: () => fs.readFile('./src/icons/metapage.svg', 'utf-8'),
+        //   /* ... */
+        // },
+        // 'my-other-icons': async (iconName) => {
+        //   // your custom loader here. Do whatever you want.
+        //   // for example, fetch from a remote server:
+        //   return await fetch(`https://example.com/icons/${iconName}.svg`).then(res => res.text())
+        // },
+        // // a helper to load icons from the file system
+        // // files under `./assets/icons` with `.svg` extension will be loaded as it's file name
+        // // you can also provide a transform callback to change each icon (optional)
+        'app': FileSystemIconLoader(
+          './src/components/icons',
+          // svg => svg.replace(/^<svg /, '<svg fill="currentColor" '),
+        ),
+      },
+
+    }),],
   build: {
     outDir: DEPLOY_TARGET === "lib" ? "dist" : OUTDIR,
     target: "esnext",

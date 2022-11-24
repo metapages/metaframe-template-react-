@@ -48,17 +48,14 @@ dev: _mkcert _ensure_npm_modules (_tsc "--build")
     set -euo pipefail
     APP_ORIGIN=https://${APP_FQDN}:${APP_PORT}
     echo "Browser development pointing to: ${APP_ORIGIN}"
-    MAYBE_OPEN_BROWSER=""
-    if [ ! -f /.dockerenv ]; then
-        export MAYBE_OPEN_BROWSER="--open";
-    fi
+    deno run --allow-all --unstable {{DENO_SOURCE}}/exec/open_url.ts https://metapages.github.io/load-page-when-available/?url=https://${APP_FQDN}:${APP_PORT}
     npm i
     export HOST={{APP_FQDN}}
     export PORT={{APP_PORT}}
     export CERT_FILE=.certs/{{APP_FQDN}}.pem
     export CERT_KEY_FILE=.certs/{{APP_FQDN}}-key.pem
     export BASE=
-    VITE_APP_ORIGIN=${APP_ORIGIN} {{vite}} --clearScreen false ${MAYBE_OPEN_BROWSER}
+    VITE_APP_ORIGIN=${APP_ORIGIN} {{vite}} --clearScreen false
 
 # Increment semver version, push the tags (triggers "on-tag-version")
 @publish npmversionargs="patch": _fix_git_actions_permission _ensureGitPorcelain (_npm_version npmversionargs)
