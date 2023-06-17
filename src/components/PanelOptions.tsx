@@ -1,3 +1,8 @@
+import { useCallback } from 'react';
+
+import { useFormik } from 'formik';
+import * as yup from 'yup';
+
 import {
   Button,
   FormControl,
@@ -5,11 +10,10 @@ import {
   Input,
   InputGroup,
   Switch,
-} from "@chakra-ui/react";
-import { useFormik } from "formik";
-import { useCallback } from "react";
-import * as yup from "yup";
-import { useHashParamJson } from "@metapages/hash-query";
+} from '@chakra-ui/react';
+import { useHashParamJson } from '@metapages/hash-query';
+
+import { RadioButtonMode } from './RadioButtonMode';
 
 export type Options = {
   someBooleanOption?: boolean;
@@ -68,6 +72,7 @@ export const PanelOptions: React.FC = () => {
 
   return (
     <>
+      <RadioButtonMode />
       <br />
       <form onSubmit={formik.handleSubmit}>
         <FormControl>
