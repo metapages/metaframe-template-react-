@@ -12,7 +12,7 @@ import { useMetaframe } from '@metapages/metaframe-hook';
  * Step dial
  *
  */
-export const PanelSimulationStepDial: React.FC = () => {
+export const PanelSimulationStepDialRotary: React.FC = () => {
 
 
   // The core code
@@ -51,6 +51,7 @@ export const PanelSimulationStepDial: React.FC = () => {
         showAngleIndicator: true,
         showAxes: true,
         showConvexHulls: true,
+        showVelocity: true,
       },
     });
     // 📐 END COMMON PREAMBLE
@@ -63,7 +64,9 @@ export const PanelSimulationStepDial: React.FC = () => {
       length = 200,
       width = 25;
 
-    var rotateCenter = { x: 350, y: 300 };
+    var rotateCenter = { x: 150, y: 300 };
+
+    const collidingGroup = Body.nextGroup(true);
 
 
     // add bodies
@@ -71,10 +74,12 @@ export const PanelSimulationStepDial: React.FC = () => {
         x = 200,
         y = 200,
         partA = Bodies.rectangle(x, y, size, size / 5),
-        partB = Bodies.rectangle(x, y, size / 5, size, { render: partA.render });
+        partB = Bodies.rectangle(x, y, size / 5, size, { render: partA.render, collisionFilter: { group: collidingGroup } });
 
     var compoundBodyA = Body.create({
-        parts: [partA, partB]
+        parts: [partA, partB],
+        frictionStatic: 0.5,
+        collisionFilter: { group: -1 },
     });
     setBody(compoundBodyA);
 
@@ -116,6 +121,28 @@ export const PanelSimulationStepDial: React.FC = () => {
         },
       })
     );
+    compoundBodyA.angle = Math.PI / 2;
+
+
+    // try to add a constraint for the "clicker"
+    const selectorCenter = {x: rotateCenter.x - 40, y:rotateCenter.y - 40};
+    const selectorBody = Bodies.circle(selectorCenter.x, selectorCenter.y, 20, {collisionFilter: { group: collidingGroup }});
+    Composite.add(world, selectorBody);
+    Composite.add(
+      world,
+      Constraint.create({
+        // bodyA: compoundBodyA,
+        bodyB: selectorBody,
+        pointB: { x: 0, y: -10 },
+        pointA: { x: selectorCenter.x, y: selectorCenter.y - 60 },
+        stiffness: 0.9,
+        length: 0,
+        render: {
+          strokeStyle: "#4a485b",
+        },
+      })
+    );
+
 
     // Composite.add(world, anchor);
 
