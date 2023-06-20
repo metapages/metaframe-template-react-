@@ -87,13 +87,10 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
 
     // Widget sliding base
     const baseWidth = (selections + 1) * toothIntervalX;
-    // const totalBaseWidth = selections * toothIntervalX + toothClampWallWidth * 2;
-
 
     var slidingBaseBody = Bodies.rectangle(
-      widgetCenter.x + (baseWidth / 2) - toothIntervalX,
+      widgetCenter.x + (baseWidth / 2) - toothIntervalX - (selection * toothIntervalX) + toothIntervalX,
       widgetCenter.y + baseHeight / 2 + toothRadius,
-      // totalBaseWidth,
       baseWidth,
       baseHeight,
       {
@@ -172,7 +169,7 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
     // const teethHeightOffsetY = (toothRadius );
     const teeth = [...Array(selections)].map((_, i) => {
       var tooth = Bodies.circle(
-        widgetCenter.x + toothIntervalX * i,
+        widgetCenter.x + toothIntervalX * i - (selection * toothIntervalX) + toothIntervalX,
         widgetCenter.y,
         toothRadius,
         {
