@@ -5,6 +5,7 @@ import {
 } from 'react';
 
 import Matter from 'matter-js';
+import Quaternion, { fromEuler } from 'quaternion';
 
 import { useMetaframe } from '@metapages/metaframe-hook';
 
@@ -13,6 +14,9 @@ import { useMetaframe } from '@metapages/metaframe-hook';
  *
  */
 export const PanelSimulationStepDialSlider: React.FC = () => {
+  const forceRef = useRef<number>(0);
+  const [body, setBody] = useState<Matter.Body | null>(null);
+
   // The core code
   useEffect(() => {
     if (!ref.current) {
@@ -47,12 +51,13 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
       element: document.getElementById("matter-js")!,
       engine: engine,
       options: {
-        width: 2000,
-        height: 1000,
+        width: 1000,
+        height: 600,
         showAngleIndicator: true,
         showAxes: true,
-        showConvexHulls: true,
+        // showConvexHulls: true,
         showVelocity: true,
+        // pixelRatio: 3,
       },
     });
     // 📐 END COMMON PREAMBLE
@@ -61,9 +66,9 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
     // 📐📐📐📐📐📐📐📐📐📐📐📐📐
 
     // add bodies
-    var group = Body.nextGroup(true),
-      length = 200,
-      width = 25;
+    // var group = Body.nextGroup(true),
+    //   length = 200,
+    //   width = 25;
 
     const widgetCenter = { x: 150, y: 400 };
     const baseHeight = 100;
@@ -71,7 +76,7 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
     // const toothWidth = 30;
     const toothRadius = 30;
     const toothSpacing = 165;
-    const toothIntervalX = toothSpacing + (toothRadius * 2);
+    const toothIntervalX = toothSpacing + toothRadius * 2;
     const staticWallWidth = 200;
     const toothClampWallHeight = 400;
     const toothClampWallWidth = 200;
@@ -89,7 +94,11 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
     const baseWidth = (selections + 1) * toothIntervalX;
 
     var slidingBaseBody = Bodies.rectangle(
-      widgetCenter.x + (baseWidth / 2) - toothIntervalX - (selection * toothIntervalX) + toothIntervalX,
+      widgetCenter.x +
+        baseWidth / 2 -
+        toothIntervalX -
+        selection * toothIntervalX +
+        toothIntervalX,
       widgetCenter.y + baseHeight / 2 + toothRadius,
       baseWidth,
       baseHeight,
@@ -98,17 +107,19 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
         friction: 0,
         collisionFilter: { group: nonCollidingGroup },
         chamfer: { radius: 10 },
-        render: { fillStyle: "#060a19" },
+        render: { visible: true, fillStyle: "#fff", lineWidth: 10 },
       }
     );
     setBody(slidingBaseBody);
-    console.log('slidingBaseBody.position.x', slidingBaseBody.position.x);
-
+    // console.log('slidingBaseBody.position.x', slidingBaseBody.position.x);
 
     // add clamps to the sides of the base slider
     // left
     var slidingBaseClampLeft = Bodies.rectangle(
-      slidingBaseBody.position.x - (baseWidth / 2) - toothIntervalX - heavyTopToothRadius,
+      slidingBaseBody.position.x -
+        baseWidth / 2 -
+        toothIntervalX -
+        heavyTopToothRadius,
       widgetCenter.y + toothRadius,
       toothClampWallWidth,
       toothClampWallWidth,
@@ -121,20 +132,22 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
         render: { fillStyle: "#060a19" },
       }
     );
-    Composite.add(world, Constraint.create({
-      bodyA: slidingBaseBody,
-      pointA: {
-        x: - (baseWidth / 2) - toothIntervalX - heavyTopToothRadius,
-        y: widgetCenter.y - slidingBaseBody.position.y + toothRadius,
-      },
-      pointB: { x: 0, y: 0 },
-      bodyB: slidingBaseClampLeft,
-    }));
-
+    Composite.add(
+      world,
+      Constraint.create({
+        bodyA: slidingBaseBody,
+        pointA: {
+          x: -(baseWidth / 2) - toothIntervalX - heavyTopToothRadius,
+          y: widgetCenter.y - slidingBaseBody.position.y + toothRadius,
+        },
+        pointB: { x: 0, y: 0 },
+        bodyB: slidingBaseClampLeft,
+      })
+    );
 
     // right
     var slidingBaseClampRight = Bodies.rectangle(
-      slidingBaseBody.position.x + (baseWidth / 2)  + heavyTopToothRadius,
+      slidingBaseBody.position.x + baseWidth / 2 + heavyTopToothRadius,
       widgetCenter.y + toothRadius,
       toothClampWallWidth,
       toothClampWallWidth,
@@ -144,19 +157,21 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
         inertia: Infinity,
         collisionFilter: { group: nonCollidingGroup },
         chamfer: { radius: 10 },
-        render: { fillStyle: "#060a19" },
+        render: { fillStyle: "#060a19", lineWidth: 2 },
       }
     );
-    Composite.add(world, Constraint.create({
-      bodyA: slidingBaseBody,
-      pointA: {
-        x: (baseWidth / 2)  + heavyTopToothRadius,
-        y: widgetCenter.y - slidingBaseBody.position.y + toothRadius,
-      },
-      pointB: { x: 0, y: 0 },
-      bodyB: slidingBaseClampRight,
-    }));
-
+    Composite.add(
+      world,
+      Constraint.create({
+        bodyA: slidingBaseBody,
+        pointA: {
+          x: baseWidth / 2 + heavyTopToothRadius,
+          y: widgetCenter.y - slidingBaseBody.position.y + toothRadius,
+        },
+        pointB: { x: 0, y: 0 },
+        bodyB: slidingBaseClampRight,
+      })
+    );
 
     // FAILS:
     // don't let it move up/down
@@ -164,12 +179,13 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
     //     slidingBaseBody.position.y = widgetCenter.y + 10;
     // });
 
-
-
     // const teethHeightOffsetY = (toothRadius );
     const teeth = [...Array(selections)].map((_, i) => {
       var tooth = Bodies.circle(
-        widgetCenter.x + toothIntervalX * i - (selection * toothIntervalX) + toothIntervalX,
+        widgetCenter.x +
+          toothIntervalX * i -
+          selection * toothIntervalX +
+          toothIntervalX,
         widgetCenter.y,
         toothRadius,
         {
@@ -184,8 +200,8 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
       const toothConstraint = Constraint.create({
         bodyA: slidingBaseBody,
         pointA: {
-          x: (-baseWidth / 2) + toothIntervalX * i +  toothIntervalX,
-          y: - toothRadius - baseHeight / 2,
+          x: -baseWidth / 2 + toothIntervalX * i + toothIntervalX,
+          y: -toothRadius - baseHeight / 2,
         },
         pointB: { x: 0, y: 0 },
         bodyB: tooth,
@@ -195,20 +211,17 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
       return tooth;
     });
 
-
-
-
     // The other main tooth
     var topTooth = Bodies.circle(
       widgetCenter.x + toothIntervalX / 2,
-      widgetCenter.y - toothRadius - toothRadius * 2 - heavyTopToothRadius / 2,// - (heavyTopToothRadius + baseHeight / 2 + 60),
+      widgetCenter.y - toothRadius - toothRadius * 2 - heavyTopToothRadius / 2, // - (heavyTopToothRadius + baseHeight / 2 + 60),
       heavyTopToothRadius,
       {
         mass: 100,
         inertia: Infinity,
         restitution: 0,
         friction: 0,
-        render: { fillStyle: "#060a19" } ,
+        render: { fillStyle: "#060a19" },
       }
     );
 
@@ -224,37 +237,33 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
     //   })
     // );
 
-
-
-
-      const walls = [
-        // walls
+    const walls = [
+      // walls
 
       // upper tooth left block
       Bodies.rectangle(
         topTooth.position.x - heavyTopToothRadius - staticWallWidth / 2,
-        widgetCenter.y - toothRadius * 2  - toothClampWallHeight / 2 - 2,
+        widgetCenter.y - toothRadius * 2 - toothClampWallHeight / 2 - 2,
         toothClampWallWidth,
         toothClampWallHeight,
-        { isStatic: true, friction: 0,  }
+        { isStatic: true, friction: 0 }
       ),
       // upper tooth right block
       Bodies.rectangle(
         topTooth.position.x + heavyTopToothRadius + staticWallWidth / 2 + 2,
-        widgetCenter.y - toothRadius * 2  - toothClampWallHeight / 2 - 2,
+        widgetCenter.y - toothRadius * 2 - toothClampWallHeight / 2 - 2,
         toothClampWallWidth,
         toothClampWallHeight,
-        { isStatic: true, friction: 0,  }
+        { isStatic: true, friction: 0 }
       ),
       // upper tooth top block
       Bodies.rectangle(
         topTooth.position.x,
-        widgetCenter.y - toothRadius * 2  - toothClampWallHeight - 2,
+        widgetCenter.y - toothRadius * 2 - toothClampWallHeight - 2,
         toothClampWallWidth * 2 + heavyTopToothRadius * 2,
         staticWallWidth,
-        { isStatic: true, friction: 0,  }
+        { isStatic: true, friction: 0 }
       ),
-
 
       // slider top clamp left
       // Bodies.rectangle(
@@ -264,27 +273,26 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
       //   staticWallWidth,
       //   { isStatic: true, friction: 0, }
       // ),
+    ];
 
-      // slider base
+    const sliderFloor = // slider base
       Bodies.rectangle(
         widgetCenter.x,
         widgetCenter.y + baseHeight + staticWallWidth / 2,
         4200,
         staticWallWidth,
-        { isStatic: true, friction: 0, }
-      ),
-      ];
-
+        { isStatic: true, friction: 0 }
+      );
 
     Composite.add(world, [
       ...teeth,
       ...walls,
+      sliderFloor,
       topTooth,
       slidingBaseBody,
       slidingBaseClampLeft,
       slidingBaseClampRight,
     ]);
-
 
     // add mouse control
     var mouse = Mouse.create(render.canvas),
@@ -292,7 +300,6 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
         mouse: mouse,
         constraint: {
           stiffness: 0.2,
-
           render: {
             visible: false,
           },
@@ -301,25 +308,41 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
 
     Composite.add(world, mouseConstraint);
 
+    Matter.Events.on(engine, "beforeUpdate", function (event) {
+      //Apply force
+      if (forceRef.current !== 0) {
+        // console.log('forceRef.current', forceRef.current);
+        Matter.Body.applyForce(
+          slidingBaseBody,
+          { x: slidingBaseBody.position.x, y: slidingBaseBody.position.y },
+          { x: 0.15 * forceRef.current, y: 0 }
+        );
+      }
+    });
+
     // 📐📐📐📐📐📐📐📐📐📐📐📐📐
     // 📐📐 END ACTUAL CODE
     // 📐 BEGIN COMMON ENGINE INIT
     // keep the mouse in sync with rendering
     render.mouse = mouse;
     // fit the render viewport to the scene
-    Render.lookAt(render, [...teeth,
-      ...walls,
-      topTooth,
-      slidingBaseClampLeft,
-      slidingBaseClampRight,
-      slidingBaseBody,]
-    //   , {
+    Render.lookAt(
+      render,
+      [
+        ...teeth,
+        ...walls,
+        topTooth,
+        slidingBaseClampLeft,
+        slidingBaseClampRight,
+        slidingBaseBody,
+      ]
+      //   , {
 
-    //   {
-    //   objects: [],
-    //   // min: { x: 0, y: 0 },
-    //   // max: { x: 2000, y: 600 },
-    // }
+      //   {
+      //   objects: [],
+      //   // min: { x: 0, y: 0 },
+      //   // max: { x: 2000, y: 600 },
+      // }
     );
     // run the renderer
     Render.run(render);
@@ -335,32 +358,113 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
       Render.stop(render);
       setBody(null);
     };
-  }, []);
+  }, [setBody, forceRef]);
 
-  const [body, setBody] = useState<Matter.Body | null>(null);
   const metaframeObject = useMetaframe();
   useEffect(() => {
     const metaframe = metaframeObject.metaframe;
     if (!metaframe || !body) {
       return;
     }
-    const disposer = metaframe.onInput("input-rotation", (value: number) => {
-      // console.log('value', value);
-      Matter.Body.applyForce(
-        body,
-        { x: body.position.x, y: body.position.y },
-        { x: -0.08 * (value > 0 ? 1 : -1), y: 0 }
-      );
-      // const { x, y } = metaframeObject;
-      // Body.setPosition(body, { x, y });
-    });
+    const disposers: (() => void)[] = [];
+
+    // const normalizer = createNormalizer(30, 1);
+    // disposers.push(metaframe.onInput("input-rotation", (value: number) => {
+    //   const valueNormalized = normalizer(value);
+    //   forceRef.current = valueNormalized;
+    // }));
+
+    const rad = Math.PI / 180;
+    disposers.push(
+      metaframe.onInput("o", (orientation: number[]) => {
+        var q = fromEuler(
+          orientation[0] * rad,
+          orientation[1] * rad,
+          orientation[2] * rad,
+          "ZXY"
+        );
+        // this returns values from [-0.02, 0.02]
+        let yaw = yawFromQuaternion(q);
+        // console.log('yaw', yaw);
+        yaw = Math.max(Math.min(yaw, 0.028), -0.028);
+        let forceNormalized = (yaw - -0.028) / (0.028 - -0.028);
+        metaframe.setOutput("force", forceNormalized);
+        forceNormalized = forceNormalized * 2 - 1;
+        forceRef.current = forceNormalized;
+        // console.log('forceNormalized', forceNormalized);
+        // console.log('o-yaw', yaw);
+      })
+    );
+
+    // disposers.push(metaframe.onInput("oa", (orientation: number[]) => {
+    //   var q = fromEuler(orientation[0] * rad, orientation[1] * rad, orientation[2] * rad, 'ZXY');
+    //   const yaw = yawFromQuaternion(q);
+    //   // console.log('oa-yaw', yaw);
+    // }));
 
     return () => {
-      disposer();
+      while (disposers.length > 0) {
+        disposers.pop()?.();
+      }
     };
-  }, [metaframeObject?.metaframe, body]);
+  }, [metaframeObject?.metaframe]);
 
   const ref = useRef<HTMLDivElement>(null);
 
   return <div id="matter-js" ref={ref}></div>;
+};
+
+/**
+ *
+ * @returns [-1, 1]
+ */
+
+const createNormalizer = (valuesToCapture: number = 30, scale: number = 1) => {
+  let min: number | null = null;
+  let max: number | null = null;
+  let count: number = 0;
+  return (value: number): number => {
+    count++;
+    if (min === null) {
+      min = value;
+    }
+    if (max === null) {
+      max = value;
+    }
+    min = Math.min(min, value);
+    max = Math.max(max, value);
+    if (count < valuesToCapture) {
+      return 0;
+    }
+    return (((value - min) / (max - min)) * 2 - 1) * scale;
+  };
+};
+
+export interface OrientationPoint {
+  qx: number;
+  qy: number;
+  qw: number;
+  qz: number;
+  // pitch:number;
+  // roll:number;
+  // yaw:number;
+  // t:number;
+}
+
+export interface EulerPoint {
+  // qx:number;
+  // qy:number;
+  // qw:number;
+  // qz:number;
+  pitch: number;
+  roll: number;
+  yaw: number;
+  // t:number;
+}
+
+const yawFromQuaternion = (o: Quaternion): number => {
+  // https://dulacp.com/2013/03/computing-the-ios-device-tilt.html
+  // double yaw = asin(2*(quat.x*quat.z - quat.w*quat.y));
+  const yaw = Math.asin(2 * (o.x * o.z - o.w * o.y));
+  return yaw;
 };
