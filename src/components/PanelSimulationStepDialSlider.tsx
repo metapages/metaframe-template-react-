@@ -70,7 +70,8 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
 
     // const toothWidth = 30;
     const toothRadius = 30;
-    const toothGap = 220;
+    const toothSpacing = 165;
+    const toothIntervalX = toothSpacing + (toothRadius * 2);
     const staticWallWidth = 200;
     const toothClampWallHeight = 400;
     const toothClampWallWidth = 200;
@@ -78,19 +79,22 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
     const heavyTopToothRadius = 100;
 
     const selections = 6;
+    const selection = 0;
     const friction = 0.5;
 
     // const collidingGroup = Body.nextGroup(true);
     const nonCollidingGroup = Body.nextGroup(false);
 
     // Widget sliding base
-    const baseWidth = selections * toothGap + toothRadius * 2;
-    const totalBaseWidth = selections * toothGap + toothRadius * 2 + toothClampWallWidth * 2;
+    const baseWidth = (selections + 1) * toothIntervalX;
+    // const totalBaseWidth = selections * toothIntervalX + toothClampWallWidth * 2;
+
 
     var slidingBaseBody = Bodies.rectangle(
-      widgetCenter.x + baseWidth / 2,
-      widgetCenter.y + baseHeight / 2,
-      totalBaseWidth,
+      widgetCenter.x + (baseWidth / 2) - toothIntervalX,
+      widgetCenter.y + baseHeight / 2 + toothRadius,
+      // totalBaseWidth,
+      baseWidth,
       baseHeight,
       {
         // friction,
@@ -101,25 +105,80 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
       }
     );
     setBody(slidingBaseBody);
-    // don't let it move up/down
+    console.log('slidingBaseBody.position.x', slidingBaseBody.position.x);
 
+
+    // add clamps to the sides of the base slider
+    // left
+    var slidingBaseClampLeft = Bodies.rectangle(
+      slidingBaseBody.position.x - (baseWidth / 2) - toothIntervalX - heavyTopToothRadius,
+      widgetCenter.y,
+      toothClampWallWidth,
+      toothClampWallWidth,
+      {
+        // friction,
+        friction: 0,
+        inertia: Infinity,
+        collisionFilter: { group: nonCollidingGroup },
+        chamfer: { radius: 10 },
+        render: { fillStyle: "#060a19" },
+      }
+    );
+    Composite.add(world, Constraint.create({
+      bodyA: slidingBaseBody,
+      pointA: {
+        x: - (baseWidth / 2) - toothIntervalX - heavyTopToothRadius,
+        y: widgetCenter.y - slidingBaseBody.position.y,
+
+      },
+      pointB: { x: 0, y: 0 },
+      bodyB: slidingBaseClampLeft,
+    }));
+
+    // right
+    var slidingBaseClampRight = Bodies.rectangle(
+      widgetCenter.x + ((baseWidth)) + toothClampWallWidth / 2,
+      widgetCenter.y,
+      toothClampWallWidth,
+      toothClampWallWidth,
+      {
+        // friction,
+        friction: 0,
+        collisionFilter: { group: nonCollidingGroup },
+        chamfer: { radius: 10 },
+        render: { fillStyle: "#060a19" },
+      }
+    );
+    Composite.add(world, Constraint.create({
+      bodyA: slidingBaseBody,
+      pointA: {
+        x: ((baseWidth + baseWidth) / 2),
+        y: - baseHeight / 2,
+
+      },
+      pointB: { x: 0, y: 0 },
+      bodyB: slidingBaseClampRight,
+    }));
+
+
+    // FAILS:
+    // don't let it move up/down
     // Events.on(engine, 'beforeUpdate', function(event) {
     //     slidingBaseBody.position.y = widgetCenter.y + 10;
     // });
 
 
 
-    const teethHeighOffsetY = (toothRadius );
+    // const teethHeightOffsetY = (toothRadius );
     const teeth = [...Array(selections)].map((_, i) => {
-      // var tooth = Bodies.rectangle(widgetCenter.x + toothGap * i, widgetCenter.y - baseHeight , toothWidth, toothRadius, { isStatic: false, chamfer: {radius:5}, render: { fillStyle: '#060a19' }, collisionFilter: { group: nonCollidingGroup } });
       var tooth = Bodies.circle(
-        widgetCenter.x + (toothGap + toothRadius - 30) * i,
-        widgetCenter.y - teethHeighOffsetY,
+        widgetCenter.x + toothIntervalX * i,
+        widgetCenter.y,
         toothRadius,
         {
           friction,
           mass: 5,
-          inertia: Infinity,
+          // inertia: Infinity,
           restitution: 0,
           render: { fillStyle: "#060a19" },
           collisionFilter: { group: nonCollidingGroup },
@@ -128,8 +187,8 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
       const toothConstraint = Constraint.create({
         bodyA: slidingBaseBody,
         pointA: {
-          x: toothGap * i - baseWidth / 2,
-          y: - teethHeighOffsetY - baseHeight / 2,
+          x: (-baseWidth / 2) + toothIntervalX * i +  toothIntervalX,
+          y: - toothRadius - baseHeight / 2,
         },
         pointB: { x: 0, y: 0 },
         bodyB: tooth,
@@ -141,10 +200,11 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
 
 
 
+
     // The other main tooth
     var topTooth = Bodies.circle(
-      widgetCenter.x + toothGap / 2,
-      widgetCenter.y - teethHeighOffsetY - toothRadius * 2 - heavyTopToothRadius / 2,// - (heavyTopToothRadius + baseHeight / 2 + 60),
+      widgetCenter.x + toothIntervalX / 2,
+      widgetCenter.y - toothRadius - toothRadius * 2 - heavyTopToothRadius / 2,// - (heavyTopToothRadius + baseHeight / 2 + 60),
       heavyTopToothRadius,
       {
         mass: 100,
@@ -224,7 +284,10 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
       ...walls,
       topTooth,
       slidingBaseBody,
+      slidingBaseClampLeft,
+      // slidingBaseClampRight,
     ]);
+
 
     // add mouse control
     var mouse = Mouse.create(render.canvas),
@@ -250,6 +313,8 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
     Render.lookAt(render, [...teeth,
       ...walls,
       topTooth,
+      slidingBaseClampLeft,
+      slidingBaseClampRight,
       slidingBaseBody,]
     //   , {
 
