@@ -112,7 +112,7 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
     // left
     var slidingBaseClampLeft = Bodies.rectangle(
       slidingBaseBody.position.x - (baseWidth / 2) - toothIntervalX - heavyTopToothRadius,
-      widgetCenter.y,
+      widgetCenter.y + toothRadius,
       toothClampWallWidth,
       toothClampWallWidth,
       {
@@ -128,22 +128,23 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
       bodyA: slidingBaseBody,
       pointA: {
         x: - (baseWidth / 2) - toothIntervalX - heavyTopToothRadius,
-        y: widgetCenter.y - slidingBaseBody.position.y,
-
+        y: widgetCenter.y - slidingBaseBody.position.y + toothRadius,
       },
       pointB: { x: 0, y: 0 },
       bodyB: slidingBaseClampLeft,
     }));
 
+
     // right
     var slidingBaseClampRight = Bodies.rectangle(
-      widgetCenter.x + ((baseWidth)) + toothClampWallWidth / 2,
-      widgetCenter.y,
+      slidingBaseBody.position.x + (baseWidth / 2)  + heavyTopToothRadius,
+      widgetCenter.y + toothRadius,
       toothClampWallWidth,
       toothClampWallWidth,
       {
         // friction,
         friction: 0,
+        inertia: Infinity,
         collisionFilter: { group: nonCollidingGroup },
         chamfer: { radius: 10 },
         render: { fillStyle: "#060a19" },
@@ -152,9 +153,8 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
     Composite.add(world, Constraint.create({
       bodyA: slidingBaseBody,
       pointA: {
-        x: ((baseWidth + baseWidth) / 2),
-        y: - baseHeight / 2,
-
+        x: (baseWidth / 2)  + heavyTopToothRadius,
+        y: widgetCenter.y - slidingBaseBody.position.y + toothRadius,
       },
       pointB: { x: 0, y: 0 },
       bodyB: slidingBaseClampRight,
@@ -285,7 +285,7 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
       topTooth,
       slidingBaseBody,
       slidingBaseClampLeft,
-      // slidingBaseClampRight,
+      slidingBaseClampRight,
     ]);
 
 
