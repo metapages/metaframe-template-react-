@@ -9,6 +9,10 @@ import Quaternion, { fromEuler } from 'quaternion';
 
 import { useMetaframe } from '@metapages/metaframe-hook';
 
+const fillStyleBlocks = "#828583";
+const fillStyleTeeth = "#828583";
+const rectOverCircleTeeth = true;
+
 /**
  * Step dial
  *
@@ -49,7 +53,7 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
     // create a renderer
     var render = Render.create({
       element: document.getElementById("matter-js")!,
-      engine: engine,
+      engine,
       options: {
         width: 1000,
         height: 600,
@@ -58,6 +62,7 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
         // showConvexHulls: true,
         showVelocity: true,
         // pixelRatio: 3,
+        wireframes: false,
       },
     });
     // 📐 END COMMON PREAMBLE
@@ -74,14 +79,16 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
     const baseHeight = 100;
 
     // const toothWidth = 30;
-    const toothRadius = 30;
-    const toothSpacing = 165;
+    const toothRadius = 60;
+    const toothSpacing = 275;
     const toothIntervalX = toothSpacing + toothRadius * 2;
     const staticWallWidth = 200;
-    const toothClampWallHeight = 400;
-    const toothClampWallWidth = 200;
 
-    const heavyTopToothRadius = 100;
+    // const toothClampWallHeight = 400;
+    const toothClampWallWidth = 200;
+    const heavyTopToothRadius = 150;
+
+    const sliderSideClampHeight = 300;
 
     const selections = 6;
     const selection = 0;
@@ -104,10 +111,12 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
       baseHeight,
       {
         // friction,
-        friction: 0,
+        // frictionStatic: 0.1,
+        friction: 0.001,
+        restitution: 0,
         collisionFilter: { group: nonCollidingGroup },
         chamfer: { radius: 10 },
-        render: { visible: true, fillStyle: "#fff", lineWidth: 10 },
+        render: { fillStyle: fillStyleBlocks },
       }
     );
     setBody(slidingBaseBody);
@@ -115,21 +124,19 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
 
     // add clamps to the sides of the base slider
     // left
+    const toothClampWallHeight = toothClampWallWidth * 3;
     var slidingBaseClampLeft = Bodies.rectangle(
-      slidingBaseBody.position.x -
-        baseWidth / 2 -
-        toothIntervalX -
-        heavyTopToothRadius,
-      widgetCenter.y + toothRadius,
+      slidingBaseBody.position.x - baseWidth / 2 - toothClampWallWidth / 2 - toothSpacing,
+      slidingBaseBody.position.y - (sliderSideClampHeight / 2 + baseHeight),
       toothClampWallWidth,
-      toothClampWallWidth,
+      toothClampWallHeight,
       {
-        // friction,
         friction: 0,
+        restitution: 0,
         inertia: Infinity,
         collisionFilter: { group: nonCollidingGroup },
         chamfer: { radius: 10 },
-        render: { fillStyle: "#060a19" },
+        render: { fillStyle: fillStyleBlocks },
       }
     );
     Composite.add(
@@ -137,8 +144,8 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
       Constraint.create({
         bodyA: slidingBaseBody,
         pointA: {
-          x: -(baseWidth / 2) - toothIntervalX - heavyTopToothRadius,
-          y: widgetCenter.y - slidingBaseBody.position.y + toothRadius,
+          x: -(baseWidth / 2) - toothClampWallWidth / 2 - toothSpacing,
+          y: -(sliderSideClampHeight / 2 + baseHeight),
         },
         pointB: { x: 0, y: 0 },
         bodyB: slidingBaseClampLeft,
@@ -147,17 +154,25 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
 
     // right
     var slidingBaseClampRight = Bodies.rectangle(
-      slidingBaseBody.position.x + baseWidth / 2 + heavyTopToothRadius,
-      widgetCenter.y + toothRadius,
+
+      // slidingBaseBody.position.x - baseWidth / 2 - toothClampWallWidth / 2,
+      // slidingBaseBody.position.y - (sliderSideClampHeight / 2 + baseHeight),
+      // toothClampWallWidth,
+      // toothClampWallHeight,
+
+
+      slidingBaseBody.position.x + baseWidth / 2 + toothClampWallWidth / 2,
+      slidingBaseBody.position.y - (sliderSideClampHeight / 2 + baseHeight),
       toothClampWallWidth,
-      toothClampWallWidth,
+      toothClampWallHeight,
       {
         // friction,
         friction: 0,
+        restitution: 0,
         inertia: Infinity,
         collisionFilter: { group: nonCollidingGroup },
         chamfer: { radius: 10 },
-        render: { fillStyle: "#060a19", lineWidth: 2 },
+        render: { fillStyle: fillStyleBlocks },
       }
     );
     Composite.add(
@@ -165,8 +180,8 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
       Constraint.create({
         bodyA: slidingBaseBody,
         pointA: {
-          x: baseWidth / 2 + heavyTopToothRadius,
-          y: widgetCenter.y - slidingBaseBody.position.y + toothRadius,
+          x: (baseWidth / 2) + toothClampWallWidth / 2,
+          y: -(sliderSideClampHeight / 2 + baseHeight),
         },
         pointB: { x: 0, y: 0 },
         bodyB: slidingBaseClampRight,
@@ -180,7 +195,16 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
     // });
 
     // const teethHeightOffsetY = (toothRadius );
+    const teethOptions = {
+      friction,
+      mass: 5,
+      inertia: Infinity,
+      restitution: 0,
+      render: { fillStyle: fillStyleTeeth },
+      collisionFilter: { group: nonCollidingGroup },
+    };
     const teeth = [...Array(selections)].map((_, i) => {
+
       var tooth = Bodies.circle(
         widgetCenter.x +
           toothIntervalX * i -
@@ -188,15 +212,22 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
           toothIntervalX,
         widgetCenter.y,
         toothRadius,
-        {
-          friction,
-          mass: 5,
-          // inertia: Infinity,
-          restitution: 0,
-          render: { fillStyle: "#060a19" },
-          collisionFilter: { group: nonCollidingGroup },
-        }
+        teethOptions,
       );
+      if (rectOverCircleTeeth) {
+
+        tooth = Bodies.rectangle(
+          widgetCenter.x +
+          toothIntervalX * i -
+          selection * toothIntervalX +
+          toothIntervalX,
+          widgetCenter.y,
+          toothRadius * 2,
+          toothRadius,
+          teethOptions
+          );
+        }
+
       const toothConstraint = Constraint.create({
         bodyA: slidingBaseBody,
         pointA: {
@@ -221,7 +252,7 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
         inertia: Infinity,
         restitution: 0,
         friction: 0,
-        render: { fillStyle: "#060a19" },
+        render: { fillStyle: fillStyleTeeth },
       }
     );
 
@@ -242,19 +273,29 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
 
       // upper tooth left block
       Bodies.rectangle(
-        topTooth.position.x - heavyTopToothRadius - staticWallWidth / 2,
+        topTooth.position.x - heavyTopToothRadius - staticWallWidth / 2 - (rectOverCircleTeeth ? 10 : 0),
         widgetCenter.y - toothRadius * 2 - toothClampWallHeight / 2 - 2,
         toothClampWallWidth,
         toothClampWallHeight,
-        { isStatic: true, friction: 0 }
+        {
+          restitution: 0,
+          isStatic: true,
+          friction: 0,
+          render: { fillStyle: fillStyleBlocks },
+        }
       ),
       // upper tooth right block
       Bodies.rectangle(
-        topTooth.position.x + heavyTopToothRadius + staticWallWidth / 2 + 2,
+        topTooth.position.x + heavyTopToothRadius + staticWallWidth / 2 + 2 + (rectOverCircleTeeth ? 10 : 0),
         widgetCenter.y - toothRadius * 2 - toothClampWallHeight / 2 - 2,
         toothClampWallWidth,
         toothClampWallHeight,
-        { isStatic: true, friction: 0 }
+        {
+          restitution: 0,
+          isStatic: true,
+          friction: 0,
+          render: { fillStyle: fillStyleBlocks },
+        }
       ),
       // upper tooth top block
       Bodies.rectangle(
@@ -262,7 +303,12 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
         widgetCenter.y - toothRadius * 2 - toothClampWallHeight - 2,
         toothClampWallWidth * 2 + heavyTopToothRadius * 2,
         staticWallWidth,
-        { isStatic: true, friction: 0 }
+        {
+          restitution: 0,
+          isStatic: true,
+          friction: 0,
+          render: { fillStyle: fillStyleBlocks },
+        }
       ),
 
       // slider top clamp left
@@ -275,13 +321,19 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
       // ),
     ];
 
+
     const sliderFloor = // slider base
       Bodies.rectangle(
         widgetCenter.x,
-        widgetCenter.y + baseHeight + staticWallWidth / 2,
-        4200,
+        slidingBaseBody.position.y + baseHeight / 2 + staticWallWidth / 2,
+        7200,
         staticWallWidth,
-        { isStatic: true, friction: 0 }
+        {
+          restitution: 0,
+          isStatic: true,
+          friction: 0,
+          render: { fillStyle: fillStyleBlocks },
+        }
       );
 
     Composite.add(world, [
@@ -315,10 +367,16 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
         Matter.Body.applyForce(
           slidingBaseBody,
           { x: slidingBaseBody.position.x, y: slidingBaseBody.position.y },
-          { x: 0.15 * forceRef.current, y: 0 }
+          { x: 0.2 * forceRef.current, y: 0 }
         );
       }
     });
+    const checkToothHeight = setInterval(() => {
+      const relativeHeight = topTooth.position.y - widgetCenter.y;
+      console.log("relativeHeight", relativeHeight);
+      // if (relativeHeight < -100) {
+      // widgetCenter
+    }, 1000);
 
     // 📐📐📐📐📐📐📐📐📐📐📐📐📐
     // 📐📐 END ACTUAL CODE
@@ -357,6 +415,7 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
       Runner.stop(runner);
       Render.stop(render);
       setBody(null);
+      clearInterval(checkToothHeight);
     };
   }, [setBody, forceRef]);
 
