@@ -417,7 +417,8 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
           const amplitude = Math.floor(scaledBigToothHeight * 250);
           // console.log('amplitude', amplitude)
           timeSinceLastHaptic = now;
-          metaframe.setOutput("h", {duration: feedbackHapticDuration, amplitude });
+          // metaframe.setOutput("h", {duration: feedbackHapticDuration, amplitude });
+          metaframe.setOutput("h", {duration: 10, amplitude });
 
         // const scaledYDistanceFromBottom = (toothRadius * 2) - toothRelativeToCenterY;
         // console.log('scaledYDistanceFromBottom', scaledYDistanceFromBottom);
