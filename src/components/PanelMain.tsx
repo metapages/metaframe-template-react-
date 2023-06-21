@@ -8,7 +8,7 @@ export const PanelMain: React.FC = () => {
 
   return (
     <div>
-      <PanelSimulationStepDialSlider />
+      <PanelSimulationStepDialSlider steps={7} startStep={3} />
     </div>
   );
 };

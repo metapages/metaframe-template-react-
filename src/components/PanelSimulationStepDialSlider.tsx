@@ -17,15 +17,17 @@ const rectOverCircleTeeth = true;
  * Step dial
  *
  */
-export const PanelSimulationStepDialSlider: React.FC = () => {
+export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:number}> = ({steps = 5, startStep = 0}) => {
   const forceRef = useRef<number>(0);
   const [body, setBody] = useState<Matter.Body | null>(null);
+  const metaframeObject = useMetaframe();
 
   // The core code
   useEffect(() => {
-    if (!ref.current) {
+    if (!ref.current || !metaframeObject?.metaframe) {
       return;
     }
+    const { metaframe } = metaframeObject;
     ref.current.innerHTML = "";
 
     // 📐📐📐📐📐📐📐📐📐📐📐📐📐
@@ -80,7 +82,7 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
 
     // const toothWidth = 30;
     const toothRadius = 60;
-    const toothSpacing = 275;
+    const toothSpacing = 295;
     const toothIntervalX = toothSpacing + toothRadius * 2;
     const staticWallWidth = 200;
 
@@ -90,21 +92,25 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
 
     const sliderSideClampHeight = 300;
 
-    const selections = 6;
-    const selection = 0;
+    // const selections = 6;
+    let step = startStep;
+    metaframe.setOutput('position', step);
+    // const selection = 0;
     const friction = 0.5;
+
+    const topToothRestingY = heavyTopToothRadius - toothRadius;
 
     // const collidingGroup = Body.nextGroup(true);
     const nonCollidingGroup = Body.nextGroup(false);
 
     // Widget sliding base
-    const baseWidth = (selections + 1) * toothIntervalX;
+    const baseWidth = (steps + 1) * toothIntervalX;
 
     var slidingBaseBody = Bodies.rectangle(
       widgetCenter.x +
         baseWidth / 2 -
         toothIntervalX -
-        selection * toothIntervalX +
+        step * toothIntervalX +
         toothIntervalX,
       widgetCenter.y + baseHeight / 2 + toothRadius,
       baseWidth,
@@ -203,12 +209,12 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
       render: { fillStyle: fillStyleTeeth },
       collisionFilter: { group: nonCollidingGroup },
     };
-    const teeth = [...Array(selections)].map((_, i) => {
+    const teeth = [...Array(steps)].map((_, i) => {
 
       var tooth = Bodies.circle(
         widgetCenter.x +
           toothIntervalX * i -
-          selection * toothIntervalX +
+          step * toothIntervalX +
           toothIntervalX,
         widgetCenter.y,
         toothRadius,
@@ -219,7 +225,7 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
         tooth = Bodies.rectangle(
           widgetCenter.x +
           toothIntervalX * i -
-          selection * toothIntervalX +
+          step * toothIntervalX +
           toothIntervalX,
           widgetCenter.y,
           toothRadius * 2,
@@ -360,9 +366,65 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
 
     Composite.add(world, mouseConstraint);
 
+
+    let canBeStuck = false;
+    const newStepHapticDuration = 1000;
+    const feedbackHapticDuration = 100;
+    let timeSinceLastStep = Date.now();
+    let timeSinceLastHaptic = Date.now();
     Matter.Events.on(engine, "beforeUpdate", function (event) {
+      // [0, some positive value]
+      const toothRelativeToCenterY = widgetCenter.y - topTooth.position.y - topToothRestingY;
+      // toothRadius * 2 is the height of circle teeth
+      // toothRadius * 1.5 is the height of rect teeth
+      const maxBigToothHeight = toothRadius * (rectOverCircleTeeth ? 1.5 : 2);
+      // console.log('maxBigToothHeight', maxBigToothHeight);
+      // console.log('toothRelativeToCenterY', toothRelativeToCenterY);
+      const scaledBigToothHeight = Math.max(toothRelativeToCenterY, 0) / maxBigToothHeight;
+
+      // const relativeHeight =  widgetCenter.y - topTooth.position.y ;
+      // console.log("relativeHeight", relativeHeight);
+      // console.log('topToothRestingY', topToothRestingY);
+      let gotStuck = false;
+      const now = Date.now();
+      if (canBeStuck) {
+        if (toothRelativeToCenterY <= 1) {
+          canBeStuck = false;
+          gotStuck = true;
+
+          Body.setVelocity(slidingBaseBody, { x: 0, y: 0 });
+          Body.setVelocity(topTooth, { x: 0, y: 0 });
+          Body.setAngularVelocity(topTooth, 0);
+          // this is also where I set the step
+          const index = teeth.findIndex((t) => t.position.x > topTooth.position.x);
+          // step = Math.round((widgetCenter.x + baseWidth / 2 - slidingBaseBody.position.y) / toothIntervalX);
+          // console.log('step', index);
+          if (index !== step) {
+            step = index;
+            metaframe.setOutput('position', index);
+            timeSinceLastStep = now + 1000;
+            timeSinceLastHaptic = now;
+            metaframe.setOutput("h", {duration: newStepHapticDuration, amplitude: 255 });
+          }
+        }
+      } else {
+        if (toothRelativeToCenterY > 20) {
+          canBeStuck = true;
+        }
+      }
+      if (scaledBigToothHeight > 0.4 && now - timeSinceLastStep > newStepHapticDuration && now - timeSinceLastHaptic > feedbackHapticDuration) {
+          // console.log('scaledBigToothHeight', scaledBigToothHeight)
+          const amplitude = Math.floor(scaledBigToothHeight * 250);
+          // console.log('amplitude', amplitude)
+          timeSinceLastHaptic = now;
+          metaframe.setOutput("h", {duration: feedbackHapticDuration, amplitude });
+
+        // const scaledYDistanceFromBottom = (toothRadius * 2) - toothRelativeToCenterY;
+        // console.log('scaledYDistanceFromBottom', scaledYDistanceFromBottom);
+      }
+
       //Apply force
-      if (forceRef.current !== 0) {
+      if (!gotStuck && forceRef.current !== 0) {
         // console.log('forceRef.current', forceRef.current);
         Matter.Body.applyForce(
           slidingBaseBody,
@@ -370,13 +432,29 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
           { x: 0.2 * forceRef.current, y: 0 }
         );
       }
+
+
+      // slider check step change
+      // slidingBaseBody.position.x = widgetCenter.x + sliderStep * stepRef.current;
+
+      // widgetCenter.x +
+      //   baseWidth / 2 -
+      //   toothIntervalX -
+      //   step * toothIntervalX +
+      //   toothIntervalX
+
     });
-    const checkToothHeight = setInterval(() => {
-      const relativeHeight = topTooth.position.y - widgetCenter.y;
-      console.log("relativeHeight", relativeHeight);
-      // if (relativeHeight < -100) {
-      // widgetCenter
-    }, 1000);
+    // const checkToothHeight = setInterval(() => {
+    //   const relativeHeight =  widgetCenter.y - topTooth.position.y ;
+    //   console.log("relativeHeight", relativeHeight);
+    //   console.log(topToothRestingY - relativeHeight)
+    //   const isReadyToStick = topToothRestingY - relativeHeight > 0;
+    //   if (isReadyToStick) {
+    //     console.log("isReadyToStick", isReadyToStick);
+    //   }
+    //   // if (relativeHeight < -100) {
+    //   // widgetCenter
+    // }, 1000);
 
     // 📐📐📐📐📐📐📐📐📐📐📐📐📐
     // 📐📐 END ACTUAL CODE
@@ -394,13 +472,6 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
         slidingBaseClampRight,
         slidingBaseBody,
       ]
-      //   , {
-
-      //   {
-      //   objects: [],
-      //   // min: { x: 0, y: 0 },
-      //   // max: { x: 2000, y: 600 },
-      // }
     );
     // run the renderer
     Render.run(render);
@@ -415,11 +486,11 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
       Runner.stop(runner);
       Render.stop(render);
       setBody(null);
-      clearInterval(checkToothHeight);
+      // clearInterval(checkToothHeight);
     };
-  }, [setBody, forceRef]);
+  }, [setBody, forceRef, metaframeObject?.metaframe]);
 
-  const metaframeObject = useMetaframe();
+
   useEffect(() => {
     const metaframe = metaframeObject.metaframe;
     if (!metaframe || !body) {
@@ -434,6 +505,8 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
     // }));
 
     const rad = Math.PI / 180;
+    const hapticInterval = 100;
+    let timeLastHaptic = Date.now();
     disposers.push(
       metaframe.onInput("o", (orientation: number[]) => {
         var q = fromEuler(
@@ -446,10 +519,24 @@ export const PanelSimulationStepDialSlider: React.FC = () => {
         let yaw = yawFromQuaternion(q);
         // console.log('yaw', yaw);
         yaw = Math.max(Math.min(yaw, 0.028), -0.028);
-        let forceNormalized = (yaw - -0.028) / (0.028 - -0.028);
+        const forceNormalized = (yaw - -0.028) / (0.028 - -0.028);
         metaframe.setOutput("force", forceNormalized);
-        forceNormalized = forceNormalized * 2 - 1;
-        forceRef.current = forceNormalized;
+        const forceNormalizedNegative1ToPositive1 = forceNormalized * 2 - 1;
+        forceRef.current = forceNormalizedNegative1ToPositive1;
+
+        // const now = Date.now();
+        // const absForceNormalizedNegative1ToPositive1 = Math.abs(forceNormalizedNegative1ToPositive1);
+        // console.log('absForceNormalizedNegative1ToPositive1', absForceNormalizedNegative1ToPositive1);
+        // if (absForceNormalizedNegative1ToPositive1 > 0.3 && now - timeLastHaptic > hapticInterval) {
+        //   const amplitude = Math.floor((absForceNormalizedNegative1ToPositive1 - 0.3) * 255);
+        //   console.log('amplitude', amplitude);
+        //   metaframe.setOutput("h", {duration: hapticInterval, amplitude });
+        //   // metaframe.setOutput("h", {duration: hapticInterval, amplitude });
+        //   // metaframe.setOutput("hg", {medium: true});
+        //   timeLastHaptic = now;
+        // }
+
+
         // console.log('forceNormalized', forceNormalized);
         // console.log('o-yaw', yaw);
       })
