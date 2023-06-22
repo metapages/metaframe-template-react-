@@ -5,16 +5,19 @@ import {
 } from 'react';
 
 import Matter from 'matter-js';
-import Quaternion, { fromEuler } from 'quaternion';
+import { fromEuler } from 'quaternion';
 
 import { useMetaframe } from '@metapages/metaframe-hook';
 
+import { yawFromQuaternion } from './common';
+
 const fillStyleBlocks = "#828583";
 const fillStyleTeeth = "#828583";
-const rectOverCircleTeeth = true;
+const rectOverCircleTeeth = false;
 
 /**
  * Step dial
+ * Test with: https://app.metapage.io/dion/step-dial-iphone-v1/view?tab=0
  *
  */
 export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:number}> = ({steps = 5, startStep = 0}) => {
@@ -41,8 +44,6 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
       Bodies = Matter.Bodies,
       Body = Matter.Body,
       Constraint = Matter.Constraint,
-      Composites = Matter.Composites,
-      Vector = Matter.Vector,
       Mouse = Matter.Mouse,
       MouseConstraint = Matter.MouseConstraint,
       Composite = Matter.Composite;
@@ -251,28 +252,30 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
     // The other main tooth
     var topTooth = Bodies.circle(
       widgetCenter.x + toothIntervalX / 2,
-      widgetCenter.y - toothRadius - toothRadius * 2 - heavyTopToothRadius / 2, // - (heavyTopToothRadius + baseHeight / 2 + 60),
+      widgetCenter.y - (heavyTopToothRadius - toothRadius) - 10,
+      // widgetCenter.y - toothRadius - toothRadius * 2 - heavyTopToothRadius / 2, // - (heavyTopToothRadius + baseHeight / 2 + 60),
       heavyTopToothRadius,
       {
         mass: 100,
-        inertia: Infinity,
-        restitution: 0,
+        // inertia: Infinity,
+        // restitution: 0,
         friction: 0,
         render: { fillStyle: fillStyleTeeth },
       }
     );
 
-    // Composite.add(
-    //   world,
-    //   Constraint.create({
-    //     pointA: { x: topTooth.position.x, y: topTooth.position.y },
-    //     pointB: { x: 0, y: 0 },
-    //     bodyB: topTooth,
-    //     stiffness: 0.2,
-    //     length: 60,
-    //     damping: 0.1,
-    //   })
-    // );
+    Composite.add(
+      world,
+
+      Constraint.create({
+        pointA: { x: topTooth.position.x, y: topTooth.position.y + 220},
+        pointB: { x: 0, y: 0 },
+        bodyB: topTooth,
+        stiffness: 0.2,
+        length: 200,
+        // damping: 0.1,
+      })
+    );
 
     const walls = [
       // walls
@@ -392,7 +395,7 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
           canBeStuck = false;
           gotStuck = true;
 
-          Body.setVelocity(slidingBaseBody, { x: 0, y: 0 });
+          // Body.setVelocity(slidingBaseBody, { x: 0, y: 0 });
           Body.setVelocity(topTooth, { x: 0, y: 0 });
           Body.setAngularVelocity(topTooth, 0);
           // this is also where I set the step
@@ -427,11 +430,16 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
       //Apply force
       if (!gotStuck && forceRef.current !== 0) {
         // console.log('forceRef.current', forceRef.current);
-        Matter.Body.applyForce(
-          slidingBaseBody,
-          { x: slidingBaseBody.position.x, y: slidingBaseBody.position.y },
-          { x: 0.2 * forceRef.current, y: 0 }
-        );
+        if (Math.abs(forceRef.current) > 0.4) {
+          Body.setVelocity(slidingBaseBody, { x: forceRef.current * 10, y: 0 });
+        } else {
+          Body.setVelocity(slidingBaseBody, { x: 0, y: 0 });
+        }
+        // Matter.Body.applyForce(
+        //   slidingBaseBody,
+        //   { x: slidingBaseBody.position.x, y: slidingBaseBody.position.y },
+        //   { x: 0.2 * forceRef.current, y: 0 }
+        // );
       }
 
 
@@ -505,9 +513,13 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
     //   forceRef.current = valueNormalized;
     // }));
 
+
+
     const rad = Math.PI / 180;
     const hapticInterval = 100;
     let timeLastHaptic = Date.now();
+
+
     disposers.push(
       metaframe.onInput("o", (orientation: number[]) => {
         var q = fromEuler(
@@ -559,59 +571,4 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
   const ref = useRef<HTMLDivElement>(null);
 
   return <div id="matter-js" ref={ref}></div>;
-};
-
-/**
- *
- * @returns [-1, 1]
- */
-
-const createNormalizer = (valuesToCapture: number = 30, scale: number = 1) => {
-  let min: number | null = null;
-  let max: number | null = null;
-  let count: number = 0;
-  return (value: number): number => {
-    count++;
-    if (min === null) {
-      min = value;
-    }
-    if (max === null) {
-      max = value;
-    }
-    min = Math.min(min, value);
-    max = Math.max(max, value);
-    if (count < valuesToCapture) {
-      return 0;
-    }
-    return (((value - min) / (max - min)) * 2 - 1) * scale;
-  };
-};
-
-export interface OrientationPoint {
-  qx: number;
-  qy: number;
-  qw: number;
-  qz: number;
-  // pitch:number;
-  // roll:number;
-  // yaw:number;
-  // t:number;
-}
-
-export interface EulerPoint {
-  // qx:number;
-  // qy:number;
-  // qw:number;
-  // qz:number;
-  pitch: number;
-  roll: number;
-  yaw: number;
-  // t:number;
-}
-
-const yawFromQuaternion = (o: Quaternion): number => {
-  // https://dulacp.com/2013/03/computing-the-ios-device-tilt.html
-  // double yaw = asin(2*(quat.x*quat.z - quat.w*quat.y));
-  const yaw = Math.asin(2 * (o.x * o.z - o.w * o.y));
-  return yaw;
 };
