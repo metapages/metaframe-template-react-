@@ -26,6 +26,8 @@ import {
   useHashParamInt,
 } from '@metapages/hash-query';
 
+import { PanelControllers } from './components/PanelControllers';
+
 export const App: React.FC = () => {
   const [hideMenu] = useHashParamBoolean("menuhidden");
   const [mode] = useHashParam("button", undefined);
@@ -45,7 +47,8 @@ export const App: React.FC = () => {
               <ButtonTabsToggle />
             </Show>
           </HStack>
-          <PanelMain />
+          { tab === 1 ? <PanelControllers /> : <PanelMain />}
+
         </>
       );
     } else if (mode === "hidden") {
@@ -56,7 +59,10 @@ export const App: React.FC = () => {
     <Tabs index={tab || 0} isLazy={true} onChange={setTab}>
       <TabList>
         <Tab>
-          <ViewIcon /> &nbsp; Main panel
+          <ViewIcon /> &nbsp; Superslides
+        </Tab>
+        <Tab>
+          <EditIcon /> &nbsp; Test Controllers
         </Tab>
         <Tab>
           <EditIcon /> &nbsp; Options
@@ -71,6 +77,9 @@ export const App: React.FC = () => {
       <TabPanels>
         <TabPanel>
           <PanelMain />
+        </TabPanel>
+        <TabPanel>
+          <PanelControllers />
         </TabPanel>
         <TabPanel>
           <PanelOptions />

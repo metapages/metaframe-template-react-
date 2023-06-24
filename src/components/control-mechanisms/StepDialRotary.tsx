@@ -12,7 +12,7 @@ import { useMetaframe } from '@metapages/metaframe-hook';
  * Step dial
  *
  */
-export const PanelSimulationStepDialRotary: React.FC = () => {
+export const StepDialRotary: React.FC = () => {
 
 
   // The core code

@@ -9,7 +9,10 @@ import { fromEuler } from 'quaternion';
 
 import { useMetaframe } from '@metapages/metaframe-hook';
 
-import { yawFromQuaternion } from './common';
+import { yawFromQuaternion } from '../common';
+import {
+  HAPTIC_RANGE_FOR_APPROACHING_GENTLE_CONTACT,
+} from './haptics/haptics-common';
 
 const fillStyleBlocks = "#828583";
 const fillStyleTeeth = "#828583";
@@ -20,7 +23,11 @@ const rectOverCircleTeeth = false;
  * Test with: https://app.metapage.io/dion/step-dial-iphone-v1/view?tab=0
  *
  */
-export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:number}> = ({steps = 5, startStep = 0}) => {
+export const StepDialSlider: React.FC<{
+  steps: number;
+  startStep?: number;
+  setStep: (step: number) => void;
+}> = ({ setStep, steps = 5, startStep = 0 }) => {
   const forceRef = useRef<number>(0);
   const [body, setBody] = useState<Matter.Body | null>(null);
   const metaframeObject = useMetaframe();
@@ -95,7 +102,7 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
 
     // const selections = 6;
     let step = startStep;
-    metaframe.setOutput('position', step);
+    metaframe.setOutput("position", step);
     // const selection = 0;
     const friction = 0.5;
 
@@ -133,7 +140,10 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
     // left
     const toothClampWallHeight = toothClampWallWidth * 3;
     var slidingBaseClampLeft = Bodies.rectangle(
-      slidingBaseBody.position.x - baseWidth / 2 - toothClampWallWidth / 2 - toothSpacing,
+      slidingBaseBody.position.x -
+        baseWidth / 2 -
+        toothClampWallWidth / 2 -
+        toothSpacing,
       slidingBaseBody.position.y - (sliderSideClampHeight / 2 + baseHeight),
       toothClampWallWidth,
       toothClampWallHeight,
@@ -161,12 +171,10 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
 
     // right
     var slidingBaseClampRight = Bodies.rectangle(
-
       // slidingBaseBody.position.x - baseWidth / 2 - toothClampWallWidth / 2,
       // slidingBaseBody.position.y - (sliderSideClampHeight / 2 + baseHeight),
       // toothClampWallWidth,
       // toothClampWallHeight,
-
 
       slidingBaseBody.position.x + baseWidth / 2 + toothClampWallWidth / 2,
       slidingBaseBody.position.y - (sliderSideClampHeight / 2 + baseHeight),
@@ -187,7 +195,7 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
       Constraint.create({
         bodyA: slidingBaseBody,
         pointA: {
-          x: (baseWidth / 2) + toothClampWallWidth / 2,
+          x: baseWidth / 2 + toothClampWallWidth / 2,
           y: -(sliderSideClampHeight / 2 + baseHeight),
         },
         pointB: { x: 0, y: 0 },
@@ -211,7 +219,6 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
       collisionFilter: { group: nonCollidingGroup },
     };
     const teeth = [...Array(steps)].map((_, i) => {
-
       var tooth = Bodies.circle(
         widgetCenter.x +
           toothIntervalX * i -
@@ -219,21 +226,20 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
           toothIntervalX,
         widgetCenter.y,
         toothRadius,
-        teethOptions,
+        teethOptions
       );
       if (rectOverCircleTeeth) {
-
         tooth = Bodies.rectangle(
           widgetCenter.x +
-          toothIntervalX * i -
-          step * toothIntervalX +
-          toothIntervalX,
+            toothIntervalX * i -
+            step * toothIntervalX +
+            toothIntervalX,
           widgetCenter.y,
           toothRadius * 2,
           toothRadius,
           teethOptions
-          );
-        }
+        );
+      }
 
       const toothConstraint = Constraint.create({
         bodyA: slidingBaseBody,
@@ -264,25 +270,28 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
       }
     );
 
-    Composite.add(
-      world,
+    // Composite.add(
+    //   world,
 
-      Constraint.create({
-        pointA: { x: topTooth.position.x, y: topTooth.position.y + 220},
-        pointB: { x: 0, y: 0 },
-        bodyB: topTooth,
-        stiffness: 0.2,
-        length: 200,
-        // damping: 0.1,
-      })
-    );
+    //   Constraint.create({
+    //     pointA: { x: topTooth.position.x, y: topTooth.position.y + 220},
+    //     pointB: { x: 0, y: 0 },
+    //     bodyB: topTooth,
+    //     stiffness: 0.2,
+    //     length: 200,
+    //     // damping: 0.1,
+    //   })
+    // );
 
     const walls = [
       // walls
 
       // upper tooth left block
       Bodies.rectangle(
-        topTooth.position.x - heavyTopToothRadius - staticWallWidth / 2 - (rectOverCircleTeeth ? 10 : 0),
+        topTooth.position.x -
+          heavyTopToothRadius -
+          staticWallWidth / 2 -
+          (rectOverCircleTeeth ? 10 : 0),
         widgetCenter.y - toothRadius * 2 - toothClampWallHeight / 2 - 2,
         toothClampWallWidth,
         toothClampWallHeight,
@@ -295,7 +304,11 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
       ),
       // upper tooth right block
       Bodies.rectangle(
-        topTooth.position.x + heavyTopToothRadius + staticWallWidth / 2 + 2 + (rectOverCircleTeeth ? 10 : 0),
+        topTooth.position.x +
+          heavyTopToothRadius +
+          staticWallWidth / 2 +
+          2 +
+          (rectOverCircleTeeth ? 10 : 0),
         widgetCenter.y - toothRadius * 2 - toothClampWallHeight / 2 - 2,
         toothClampWallWidth,
         toothClampWallHeight,
@@ -329,7 +342,6 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
       //   { isStatic: true, friction: 0, }
       // ),
     ];
-
 
     const sliderFloor = // slider base
       Bodies.rectangle(
@@ -369,7 +381,6 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
 
     Composite.add(world, mouseConstraint);
 
-
     let canBeStuck = false;
     const newStepHapticDuration = 1000;
     const feedbackHapticDuration = 100;
@@ -377,13 +388,15 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
     let timeSinceLastHaptic = Date.now();
     Matter.Events.on(engine, "beforeUpdate", function (event) {
       // [0, some positive value]
-      const toothRelativeToCenterY = widgetCenter.y - topTooth.position.y - topToothRestingY;
+      const toothRelativeToCenterY =
+        widgetCenter.y - topTooth.position.y - topToothRestingY;
       // toothRadius * 2 is the height of circle teeth
       // toothRadius * 1.5 is the height of rect teeth
       const maxBigToothHeight = toothRadius * (rectOverCircleTeeth ? 1.5 : 2);
       // console.log('maxBigToothHeight', maxBigToothHeight);
       // console.log('toothRelativeToCenterY', toothRelativeToCenterY);
-      const scaledBigToothHeight = Math.max(toothRelativeToCenterY, 0) / maxBigToothHeight;
+      const scaledBigToothHeight =
+        Math.max(toothRelativeToCenterY, 0) / maxBigToothHeight;
 
       // const relativeHeight =  widgetCenter.y - topTooth.position.y ;
       // console.log("relativeHeight", relativeHeight);
@@ -399,15 +412,21 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
           Body.setVelocity(topTooth, { x: 0, y: 0 });
           Body.setAngularVelocity(topTooth, 0);
           // this is also where I set the step
-          const index = teeth.findIndex((t) => t.position.x > topTooth.position.x);
+          const index = teeth.findIndex(
+            (t) => t.position.x > topTooth.position.x
+          );
           // step = Math.round((widgetCenter.x + baseWidth / 2 - slidingBaseBody.position.y) / toothIntervalX);
           // console.log('step', index);
           if (index !== step) {
             step = index;
-            metaframe.setOutput('position', index);
+            // setStep(step);
+            metaframe.setOutput("position", index);
             timeSinceLastStep = now + 1000;
             timeSinceLastHaptic = now;
-            metaframe.setOutput("h", {duration: newStepHapticDuration, amplitude: 255 });
+            metaframe.setOutput("h", {
+              pattern: [0, newStepHapticDuration],
+              intensities: [0, 255],
+            });
           }
         }
       } else {
@@ -415,13 +434,22 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
           canBeStuck = true;
         }
       }
-      if (scaledBigToothHeight > 0.4 && now - timeSinceLastStep > newStepHapticDuration && now - timeSinceLastHaptic > feedbackHapticDuration) {
-          // console.log('scaledBigToothHeight', scaledBigToothHeight)
-          const amplitude = Math.floor(scaledBigToothHeight * 250);
-          // console.log('amplitude', amplitude)
-          timeSinceLastHaptic = now;
-          // metaframe.setOutput("h", {duration: feedbackHapticDuration, amplitude });
-          metaframe.setOutput("h", {duration: 10, amplitude });
+      if (
+        scaledBigToothHeight > 0.4 &&
+        now - timeSinceLastStep > newStepHapticDuration &&
+        now - timeSinceLastHaptic > feedbackHapticDuration
+      ) {
+        // console.log('scaledBigToothHeight', scaledBigToothHeight)
+        const amplitude = Math.floor(
+          scaledBigToothHeight * HAPTIC_RANGE_FOR_APPROACHING_GENTLE_CONTACT.max
+        );
+        // console.log('amplitude', amplitude)
+        timeSinceLastHaptic = now;
+        // metaframe.setOutput("h", {duration: feedbackHapticDuration, amplitude });
+        metaframe.setOutput("h", {
+          pattern: [0, 10],
+          intensities: [0, amplitude],
+        });
 
         // const scaledYDistanceFromBottom = (toothRadius * 2) - toothRelativeToCenterY;
         // console.log('scaledYDistanceFromBottom', scaledYDistanceFromBottom);
@@ -442,7 +470,6 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
         // );
       }
 
-
       // slider check step change
       // slidingBaseBody.position.x = widgetCenter.x + sliderStep * stepRef.current;
 
@@ -451,7 +478,6 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
       //   toothIntervalX -
       //   step * toothIntervalX +
       //   toothIntervalX
-
     });
     // const checkToothHeight = setInterval(() => {
     //   const relativeHeight =  widgetCenter.y - topTooth.position.y ;
@@ -471,17 +497,14 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
     // keep the mouse in sync with rendering
     render.mouse = mouse;
     // fit the render viewport to the scene
-    Render.lookAt(
-      render,
-      [
-        ...teeth,
-        ...walls,
-        topTooth,
-        slidingBaseClampLeft,
-        slidingBaseClampRight,
-        slidingBaseBody,
-      ]
-    );
+    Render.lookAt(render, [
+      ...teeth,
+      ...walls,
+      topTooth,
+      slidingBaseClampLeft,
+      slidingBaseClampRight,
+      slidingBaseBody,
+    ]);
     // run the renderer
     Render.run(render);
     // create runner
@@ -497,8 +520,7 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
       setBody(null);
       // clearInterval(checkToothHeight);
     };
-  }, [setBody, forceRef, metaframeObject?.metaframe]);
-
+  }, [setBody, forceRef, metaframeObject?.metaframe, setStep, steps, startStep]);
 
   useEffect(() => {
     const metaframe = metaframeObject.metaframe;
@@ -513,12 +535,9 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
     //   forceRef.current = valueNormalized;
     // }));
 
-
-
     const rad = Math.PI / 180;
     const hapticInterval = 100;
     let timeLastHaptic = Date.now();
-
 
     disposers.push(
       metaframe.onInput("o", (orientation: number[]) => {
@@ -548,7 +567,6 @@ export const PanelSimulationStepDialSlider: React.FC<{steps:number, startStep?:n
         //   // metaframe.setOutput("hg", {medium: true});
         //   timeLastHaptic = now;
         // }
-
 
         // console.log('forceNormalized', forceNormalized);
         // console.log('o-yaw', yaw);
