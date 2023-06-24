@@ -19,9 +19,10 @@ import {
   Tau,
 } from '../common';
 import { CanvasElement } from '../generic/CanvasElement';
+import { createAbsoluteAccelerationFilter } from '../hand-os/Filters';
 
-const HAPTIC_RANGE_FOR_APPROACHING_GENTLE_CONTACT = {min:1, max:200};
-const ThresholdsToMoveSendIncrement = { min: 0.4, max: 0.6 };
+const HAPTIC_RANGE_FOR_APPROACHING_GENTLE_CONTACT = {min:1, max:130};
+const ThresholdsForMotionHapticFeedback = { min: 0.4, max: 0.6 };
 const ThresholdsToIncrement = { min: 0.1, max: 0.9 };
 // const SliderMoveIncrement = 0.01;
 const createMotionHaptic = (intensity: number) => ({
@@ -47,6 +48,7 @@ export const LeftRightSwitchNoPhysics: React.FC<{
 }> = ({ setIncrement }) => {
   const quaternionBaseline = useStore((state) => state.quaternionBaseline);
   const yawNormalized = useRef<number>(0.5);
+  const accelerationZ = useRef<number>(0);
   const metaframeObject = useMetaframe();
 
   useEffect(() => {
@@ -55,20 +57,30 @@ export const LeftRightSwitchNoPhysics: React.FC<{
       return;
     }
 
-    const sendHaptic = (haptic: number) => {
+    let timeUntilMotionHapticFinished = 0;
+    let timeUntilIncrementHapticFinished = 0;
+
+    const sendHaptic = (haptic :{pattern: number[], intensities: number[]}) => {
       metaframe.setOutput("h", haptic);
     }
+    const cancelHaptic = () => {
+      metaframe.setOutput("h", {cancel : true});
+    }
 
-    let timeUntilHapticFinished = 0;
-    let timeUntilIncrementReset = 0;
+    const hapticMotionFeedback = (now: number) => {
+      if (now > timeUntilMotionHapticFinished - 20) {
+        sendHaptic(createMotionHaptic(1 - Math.min(1 - yawNormalized.current, yawNormalized.current)));
+        timeUntilMotionHapticFinished = now + MotionHapticDuration;
+      }
+    };
 
-    const hapticSliderRun = (now: number) => {
-      if (now > timeUntilHapticFinished - 20) {
-        const haptic = createMotionHaptic(1 - Math.min(1 - yawNormalized.current, yawNormalized.current));
-        // console.log("hapticSliderRun", haptic);
-        metaframe.setOutput("h", haptic);
 
-        timeUntilHapticFinished = now + MotionHapticDuration;
+    let timeUntilAccelerationHapticFinished = 0;
+
+    const hapticMotionAccelerationFeedback = (now: number, acceleration:number) => {
+      if (now > timeUntilAccelerationHapticFinished - 20) {
+        sendHaptic(createMotionHaptic(acceleration));
+        timeUntilAccelerationHapticFinished = now + MotionHapticDuration;
       }
     };
 
@@ -76,23 +88,39 @@ export const LeftRightSwitchNoPhysics: React.FC<{
     const interval = setInterval(() => {
       const now = Date.now();
 
-      if (yawNormalized.current <= ThresholdsToMoveSendIncrement.min) {
-        hapticSliderRun(now);
-      } else if (yawNormalized.current >= ThresholdsToMoveSendIncrement.max) {
-        hapticSliderRun(now);
-      }
-
-      if (now > timeUntilIncrementReset) {
+      // console.log('accelerationZ.current', accelerationZ.current);
+      hapticMotionAccelerationFeedback(now, accelerationZ.current);
 
 
-        if (yawNormalized.current <= ThresholdsToIncrement.min) {
-          hapticSliderRun(now);
-          timeUntilIncrementReset = now + DelayUntilNextIncrement;
-        } else if (yawNormalized.current >= ThresholdsToIncrement.max) {
-          hapticSliderRun(now);
-          timeUntilIncrementReset = now + DelayUntilNextIncrement;
-        }
-      }
+      // increment?
+      // if (now >= timeUntilIncrementHapticFinished) {
+
+      //     // play motion haptic?
+      //   if (yawNormalized.current <= ThresholdsForMotionHapticFeedback.min) {
+      //     hapticMotionFeedback(now);
+      //   } else if (yawNormalized.current >= ThresholdsForMotionHapticFeedback.max) {
+      //     hapticMotionFeedback(now);
+      //   }
+
+
+      //   if (yawNormalized.current <= ThresholdsToIncrement.min) {
+      //     // sendHaptic(HapticKerThunk);
+      //     cancelHaptic();
+      //     setIncrement(-1);
+      //     timeUntilIncrementHapticFinished = now + DelayUntilNextIncrement;
+      //   } else if (yawNormalized.current >= ThresholdsToIncrement.max) {
+      //     cancelHaptic();
+      //     // sendHaptic(HapticKerThunk);
+      //     setIncrement(1);
+      //     timeUntilIncrementHapticFinished = now + DelayUntilNextIncrement;
+      //   }
+      // }
+
+
+
+
+
+
 
 
 
@@ -177,7 +205,15 @@ export const LeftRightSwitchNoPhysics: React.FC<{
     //
     let initialOrientationForHandRotateSelect: number| undefined;
 
+    const accFilter = createAbsoluteAccelerationFilter({bufferSize:100});
+
     disposers.push(
+      metaframe.onInput("a", (acceleration:EulerArray) => {
+        const filteredAcceleration = accFilter(acceleration);
+        console.log('acceleration', acceleration);
+        // accelerationZ.current = Math.max(acceleration[0], acceleration[1]);
+        // console.log('accelerationZ.current', accelerationZ.current);
+      }),
       metaframe.onInput("o", (orientation: EulerArray) => {
         let yaw: number | undefined;
         let roll: number | undefined;
