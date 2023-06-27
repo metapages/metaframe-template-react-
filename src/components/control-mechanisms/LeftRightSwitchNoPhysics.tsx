@@ -4,8 +4,6 @@ import {
   useRef,
 } from 'react';
 
-import { useStore } from '/@/store';
-
 import {
   Box,
   VStack,
@@ -13,29 +11,44 @@ import {
 import { useMetaframe } from '@metapages/metaframe-hook';
 
 import {
+  clamp,
   EulerArray,
   getAbsoluteDifferenceAngles,
-  rotateEulerFromBaselineQuaternion,
   Tau,
 } from '../common';
 import { CanvasElement } from '../generic/CanvasElement';
-import { createAbsoluteAccelerationFilter } from '../hand-os/Filters';
+import { useZeroOrientationFromBuffer } from '../hand-os/Filters';
+import { AccelerometerButtons } from './AccelerometerButtons';
+import { UseBaselineFromBuffer } from './UseBaselineFromBuffer';
 
-const HAPTIC_RANGE_FOR_APPROACHING_GENTLE_CONTACT = {min:1, max:130};
+const HAPTIC_RANGE_FOR_APPROACHING_GENTLE_CONTACT = { min: 1, max: 130 };
 const ThresholdsForMotionHapticFeedback = { min: 0.4, max: 0.6 };
 const ThresholdsToIncrement = { min: 0.1, max: 0.9 };
 // const SliderMoveIncrement = 0.01;
-const createMotionHaptic = (intensity: number) => ({
-  intensities: [0, Math.floor(intensity * HAPTIC_RANGE_FOR_APPROACHING_GENTLE_CONTACT.max)],
-  pattern: [0, 100],
-});
+const MotionHapticDuration = 100;
+const createMotionHaptic = (intensity: number, max: number = 10) => {
+  // console.log('createMotionHaptic intensity', intensity);
+  const scaledIntensity = clamp(Math.abs(intensity), 0, max);
+  // console.log('scaledIntensity', scaledIntensity);
+  const normalizedIntensity = scaledIntensity / max;
+  // console.log('normalizedIntensity', normalizedIntensity);
+  const hapticIntensity = Math.floor(normalizedIntensity * HAPTIC_RANGE_FOR_APPROACHING_GENTLE_CONTACT.max);
+  // console.log('z`createMotionHaptic hapticIntensity', hapticIntensity);
+  return {
+    intensities: [
+      0,
+      200,
+      // hapticIntensity,
+    ],
+    pattern: [0, MotionHapticDuration],
+  };
+};
 const HapticKerThunk = {
   intensities: [0, 100, 0, 255],
   pattern: [0, 100, 0, 100],
 };
-const MotionHapticDuration = 100;
-const DelayUntilNextIncrement = 1000;
 
+const DelayUntilNextIncrement = 1000;
 
 /**
  * Left/Right switch, no physics, just haptic feedback
@@ -46,7 +59,7 @@ export const LeftRightSwitchNoPhysics: React.FC<{
   // [-1 | 1]
   setIncrement: (inc: number) => void;
 }> = ({ setIncrement }) => {
-  const quaternionBaseline = useStore((state) => state.quaternionBaseline);
+  // const quaternionBaseline = useStore((state) => state.quaternionBaseline);
   const yawNormalized = useRef<number>(0.5);
   const accelerationZ = useRef<number>(0);
   const metaframeObject = useMetaframe();
@@ -60,37 +73,52 @@ export const LeftRightSwitchNoPhysics: React.FC<{
     let timeUntilMotionHapticFinished = 0;
     let timeUntilIncrementHapticFinished = 0;
 
-    const sendHaptic = (haptic :{pattern: number[], intensities: number[]}) => {
+    const sendHaptic = (haptic: {
+      pattern: number[];
+      intensities: number[];
+    }) => {
       metaframe.setOutput("h", haptic);
-    }
+    };
     const cancelHaptic = () => {
-      metaframe.setOutput("h", {cancel : true});
-    }
-
-    const hapticMotionFeedback = (now: number) => {
-      if (now > timeUntilMotionHapticFinished - 20) {
-        sendHaptic(createMotionHaptic(1 - Math.min(1 - yawNormalized.current, yawNormalized.current)));
-        timeUntilMotionHapticFinished = now + MotionHapticDuration;
-      }
+      metaframe.setOutput("h", { cancel: true });
     };
 
+    // const hapticMotionFeedback = (now: number) => {
+    //   if (now > timeUntilMotionHapticFinished - 20) {
+    //     sendHaptic(
+    //       createMotionHaptic(
+    //         1 - Math.min(1 - yawNormalized.current, yawNormalized.current)
+    //       )
+    //     );
+    //     timeUntilMotionHapticFinished = now + MotionHapticDuration;
+    //   }
+    // };
 
     let timeUntilAccelerationHapticFinished = 0;
 
-    const hapticMotionAccelerationFeedback = (now: number, acceleration:number) => {
-      if (now > timeUntilAccelerationHapticFinished - 20) {
+    const hapticMotionAccelerationFeedback = (
+      now: number,
+      acceleration: number
+    ) => {
+      if (now > timeUntilAccelerationHapticFinished) {
         sendHaptic(createMotionHaptic(acceleration));
         timeUntilAccelerationHapticFinished = now + MotionHapticDuration;
       }
     };
 
     // core logic:
+    // let currentMaxAcceleration = 1;
     const interval = setInterval(() => {
       const now = Date.now();
 
       // console.log('accelerationZ.current', accelerationZ.current);
-      hapticMotionAccelerationFeedback(now, accelerationZ.current);
-
+      // currentMaxAcceleration = Math.max(
+      //   currentMaxAcceleration,
+      //   accelerationZ.current
+      // );
+      // console.log("currentMaxAcceleration", currentMaxAcceleration);
+      // hapticMotionFeedback(now);
+      // hapticMotionAccelerationFeedback(now, accelerationZ.current);
 
       // increment?
       // if (now >= timeUntilIncrementHapticFinished) {
@@ -101,7 +129,6 @@ export const LeftRightSwitchNoPhysics: React.FC<{
       //   } else if (yawNormalized.current >= ThresholdsForMotionHapticFeedback.max) {
       //     hapticMotionFeedback(now);
       //   }
-
 
       //   if (yawNormalized.current <= ThresholdsToIncrement.min) {
       //     // sendHaptic(HapticKerThunk);
@@ -116,22 +143,11 @@ export const LeftRightSwitchNoPhysics: React.FC<{
       //   }
       // }
 
-
-
-
-
-
-
-
-
-
       // sliderNormalized.current = clamp(sliderNormalized.current, 0, 1);
-
 
       // console.log("sliderNormalized.current", sliderNormalized.current);
 
       // const index = stepValues.findIndex((v) => sliderNormalized.current < v);
-
 
       // if (index >= 0 && index < steps && index !== stepRef.current) {
       //   // console.log('index', index);
@@ -203,39 +219,45 @@ export const LeftRightSwitchNoPhysics: React.FC<{
     // const newStepHapticDuration = 100;
     // const feedbackHapticDuration = 10;
     //
-    let initialOrientationForHandRotateSelect: number| undefined;
+    let initialOrientationForHandRotateSelect: number | undefined;
 
-    const accFilter = createAbsoluteAccelerationFilter({bufferSize:100});
+    // const accFilter = createAbsoluteAccelerationFilter({ bufferSize: 100 });
+    const tolerance = 0.2;
+    const processOrientation = useZeroOrientationFromBuffer({bufferSize:30, tolerance});
 
     disposers.push(
-      metaframe.onInput("a", (acceleration:EulerArray) => {
-        const filteredAcceleration = accFilter(acceleration);
-        console.log('acceleration', acceleration);
-        // accelerationZ.current = Math.max(acceleration[0], acceleration[1]);
+      metaframe.onInput("ua", (acceleration: EulerArray) => {
+        // const filteredAcceleration = accFilter(acceleration);
+        // console.log('acceleration', acceleration);
+        accelerationZ.current = Math.max(...acceleration);
         // console.log('accelerationZ.current', accelerationZ.current);
       }),
-      metaframe.onInput("o", (orientation: EulerArray) => {
-        let yaw: number | undefined;
-        let roll: number | undefined;
-        if (quaternionBaseline) {
-          const rotated = rotateEulerFromBaselineQuaternion(
-            orientation,
-            quaternionBaseline
-          );
-          yaw = rotated.yaw;
-          // roll = rotated.roll;
-          roll = rotated.pitch;
+      metaframe.onInput("ao", (rawOrientation: EulerArray) => {
+        let { orientation } = processOrientation(rawOrientation);
+        let yaw: number  = orientation[0];
+        // console.log(`rawOrientation[0]=${rawOrientation[0]} orientation[0]=${orientation[0]}`)
+        let roll: number = orientation[1];
+        // let yaw: number | undefined;
+        // let roll: number | undefined;
+        // if (quaternionBaseline) {
+        //   const rotated = rotateEulerFromBaselineQuaternion(
+        //     orientation,
+        //     quaternionBaseline
+        //   );
+        //   yaw = rotated.yaw;
+        //   // roll = rotated.roll;
+        //   roll = rotated.pitch;
 
-          // initialOrientationForHandRotateSelect = roll;
-        } else {
-          yaw = orientation[0];
-          // roll = orientation[2];
-          roll = orientation[1];
-          // initialOrientationForHandRotateSelect = roll;
-        }
+        //   // initialOrientationForHandRotateSelect = roll;
+        // } else {
+        //   yaw = orientation[0];
+        //   // roll = orientation[2];
+        //   roll = orientation[1];
+        //   // initialOrientationForHandRotateSelect = roll;
+        // }
 
         if (roll < 0) {
-          roll = Tau + roll
+          roll = Tau + roll;
         }
         if (roll > Math.PI * 2) {
           roll = roll - Tau;
@@ -246,7 +268,10 @@ export const LeftRightSwitchNoPhysics: React.FC<{
           initialOrientationForHandRotateSelect = roll;
         }
 
-        const rollDelta = getAbsoluteDifferenceAngles(roll, initialOrientationForHandRotateSelect);
+        const rollDelta = getAbsoluteDifferenceAngles(
+          roll,
+          initialOrientationForHandRotateSelect
+        );
 
         // ((roll <= Math.PI ? roll + Tau : roll) - initialOrientationForHandRotateSelect + Tau);
         // console.log(`init=${initialOrientationForHandRotateSelect} roll=${roll} delta=${rollDelta}`);
@@ -254,7 +279,6 @@ export const LeftRightSwitchNoPhysics: React.FC<{
         //   setStep(stepRef.current);
         //   setActuallySelectedStep(stepRef.current);
         // }
-
 
         // // rollNormalized.current = (roll + (Math.PI / 2) ) / Math.PI;
         // rollNormalized.current = (roll  ) / (Math.PI * 2);
@@ -269,11 +293,11 @@ export const LeftRightSwitchNoPhysics: React.FC<{
 
         // let's use yaw as the force
         // rotated values [ -1, 1] approx, it's like just under half a circle
-        yaw = Math.max(Math.min(yaw, 1.0), -1.0);
-        yawNormalized.current = (yaw - -1) / 2;
-        yawNormalized.current = 1 - yawNormalized.current;
-
-
+        // yaw = Math.max(Math.min(yaw, 0.028), -0.028);
+        // const forceNormalized = (yaw - -0.028) / (0.028 - -0.028);
+        yaw = Math.max(Math.min(yaw, 1), -1);
+        yawNormalized.current = 1- (yaw + 1) / 2;
+        // yawNormalized.current = 1 - yawNormalized.current;
       })
     );
 
@@ -282,11 +306,7 @@ export const LeftRightSwitchNoPhysics: React.FC<{
         disposers.pop()?.();
       }
     };
-  }, [
-    metaframeObject?.metaframe,
-    yawNormalized,
-    quaternionBaseline,
-  ]);
+  }, [metaframeObject?.metaframe, yawNormalized]);
 
   const renderYawValue = useCallback(
     (ctx: CanvasRenderingContext2D) => {
@@ -328,8 +348,6 @@ export const LeftRightSwitchNoPhysics: React.FC<{
     [yawNormalized]
   );
 
-
-
   return (
     <VStack align="flex-start" w="100%">
       <Box w="100%">Selected Step</Box>
@@ -337,6 +355,8 @@ export const LeftRightSwitchNoPhysics: React.FC<{
       <Box w="100%">Normalized yaw (left/right)</Box>
       <CanvasElement height={20} render={renderYawValue} />
       <Box w="100%">Slider </Box>
+      <UseBaselineFromBuffer />
+      <AccelerometerButtons onDirection={() => {}}/>
     </VStack>
   );
 };

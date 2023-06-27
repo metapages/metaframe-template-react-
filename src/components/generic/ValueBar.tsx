@@ -5,8 +5,6 @@ export const ValueBar: React.FC<{
   value: number;
 }> = ({ value }) => {
 
-    console.log('value', value);
-
   return (
     <Box w="100%">
       <MetaframeStandaloneComponent

@@ -23,6 +23,9 @@ import {
 } from './control-mechanisms/RotarySwitchNoPhysics';
 import { StepDialRotary } from './control-mechanisms/StepDialRotary';
 import { StepDialSlider } from './control-mechanisms/StepDialSlider';
+import {
+  UseBaselineFromBuffer,
+} from './control-mechanisms/UseBaselineFromBuffer';
 
 /**
  * Just an example very basic output of incoming inputs
@@ -48,18 +51,25 @@ export const PanelControllers: React.FC = () => {
         orientation="vertical"
         w="100%"
       >
-        <TabList textAlign={"left"} >
-          <Tab textAlign={"left"}>LeftRightSwitchNoPhysics</Tab>
-          <Tab textAlign={"left"}>RotarySwitchNoPhysics</Tab>
-          <Tab textAlign={"left"}>RotaryConstantSpeedSwitchNoPhysics</Tab>
+        <TabList>
+          <Tab>UseBaselineFromBuffer</Tab>
+          <Tab>LeftRightSwitchNoPhysics</Tab>
+          <Tab>RotarySwitchNoPhysics</Tab>
+          <Tab>RotaryConstantSpeedSwitchNoPhysics</Tab>
           <Tab>StepDialRotary</Tab>
           <Tab>StepDialSlider</Tab>
           <Tab>HapticFeedbackTesting</Tab>
         </TabList>
 
         <TabPanels borderWidth='1px' borderRadius='lg' >
+        <TabPanel >
+            <UseBaselineFromBuffer
+
+            />
+          </TabPanel>
           <TabPanel >
             <LeftRightSwitchNoPhysics
+              setIncrement={(inc:number)=> {console.log(`inc: ${inc} ${Date.now()}`)}}
               // steps={steps}
               // startStep={startStep}
             />

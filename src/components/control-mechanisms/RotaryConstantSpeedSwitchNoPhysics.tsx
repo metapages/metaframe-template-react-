@@ -5,8 +5,6 @@ import {
   useState,
 } from 'react';
 
-import { useStore } from '/@/store';
-
 import {
   Box,
   VStack,
@@ -17,10 +15,10 @@ import {
   clamp,
   EulerArray,
   getAbsoluteDifferenceAngles,
-  rotateEulerFromBaselineQuaternion,
   Tau,
 } from '../common';
 import { CanvasElement } from '../generic/CanvasElement';
+import { useZeroOrientationFromBuffer } from '../hand-os/Filters';
 
 const ThresholdsToMoveSlider = { min: 0.2, max: 0.8 };
 const SliderMoveIncrement = 0.01;
@@ -38,7 +36,7 @@ export const RotaryConstantSpeedSwitchNoPhysics: React.FC<{
   setStep: (step: number) => void;
 }> = ({ setStep, steps = 5, startStep = 0 }) => {
   const sliderNormalized = useRef<number>(0);
-  const quaternionBaseline = useStore((state) => state.quaternionBaseline);
+  // const quaternionBaseline = useStore((state) => state.quaternionBaseline);
   const yawNormalized = useRef<number>(0.5);
   const rollNormalized = useRef<number>(0);
   // const distanceFromStepNormalized = useRef<number>(0);
@@ -185,26 +183,31 @@ export const RotaryConstantSpeedSwitchNoPhysics: React.FC<{
     //
     let initialOrientationForHandRotateSelect: number| undefined;
 
-    disposers.push(
-      metaframe.onInput("o", (orientation: EulerArray) => {
-        let yaw: number | undefined;
-        let roll: number | undefined;
-        if (quaternionBaseline) {
-          const rotated = rotateEulerFromBaselineQuaternion(
-            orientation,
-            quaternionBaseline
-          );
-          yaw = rotated.yaw;
-          // roll = rotated.roll;
-          roll = rotated.pitch;
+    const processOrientation = useZeroOrientationFromBuffer({bufferSize:30, tolerance: 6});
 
-          // initialOrientationForHandRotateSelect = roll;
-        } else {
-          yaw = orientation[0];
-          // roll = orientation[2];
-          roll = orientation[1];
-          // initialOrientationForHandRotateSelect = roll;
-        }
+    disposers.push(
+      metaframe.onInput("uo", (rawOrientation: EulerArray) => {
+        let { orientation } = processOrientation(rawOrientation);
+
+        let yaw: number  = orientation[0];
+        let roll: number = orientation[1];
+
+        // if (quaternionBaseline) {
+        //   const rotated = rotateEulerFromBaselineQuaternion(
+        //     orientation,
+        //     quaternionBaseline
+        //   );
+        //   yaw = rotated.yaw;
+        //   // roll = rotated.roll;
+        //   roll = rotated.pitch;
+
+        //   // initialOrientationForHandRotateSelect = roll;
+        // } else {
+        //   yaw = orientation[0];
+        //   // roll = orientation[2];
+        //   roll = orientation[1];
+        //   // initialOrientationForHandRotateSelect = roll;
+        // }
 
         if (roll < 0) {
           roll = Tau + roll
@@ -313,7 +316,7 @@ export const RotaryConstantSpeedSwitchNoPhysics: React.FC<{
     startStep,
     setStep,
     yawNormalized,
-    quaternionBaseline,
+    // quaternionBaseline,
   ]);
 
   const renderYawValue = useCallback(

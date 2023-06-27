@@ -72,14 +72,14 @@ const menuItemGoToMenu2: MenuItemDefinition = {
   },
 };
 
-const menuItemGoToMenu2Immediately: MenuItemDefinition = {
-  id: "Go to Menu 2 Immediately",
-  type: MenuItemTypes.menuImmediate,
-  value: menu2.id,
-};
+// const menuItemGoToMenu2Immediately: MenuItemDefinition = {
+//   id: "Go to Menu 2 Immediately",
+//   type: MenuItemTypes.menuImmediate,
+//   value: menu2.id,
+// };
 
 menu1.items.push(menuItemGoToMenu2.id);
-menu1.items.push(menuItemGoToMenu2Immediately.id);
+// menu1.items.push(menuItemGoToMenu2Immediately.id);
 menu2.items.push(menuItemGoToMenu1.id);
 
 export const MENU_ITEMS: MenuItemDefinition[] = [
@@ -87,7 +87,7 @@ export const MENU_ITEMS: MenuItemDefinition[] = [
   ...threeSlidesMenu2,
   menuItemGoToMenu1,
   menuItemGoToMenu2,
-  menuItemGoToMenu2Immediately,
+  // menuItemGoToMenu2Immediately,
 ];
 
 export const MENUS: Menu[] = [menu1, menu2];
