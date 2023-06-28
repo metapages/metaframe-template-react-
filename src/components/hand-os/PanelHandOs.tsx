@@ -7,6 +7,8 @@ import {
 import {
   Box,
   HStack,
+  Link,
+  Tag,
   VStack,
 } from '@chakra-ui/react';
 
@@ -16,8 +18,9 @@ import {
 } from '../control-mechanisms/AccelerometerButtons';
 import {
   Menu,
+  MenuItemActionMenu,
+  MenuItemActionUrl,
   MenuItemDefinition,
-  MenuItemMenuUrl,
   MenuItemTypes,
   MenuModel,
   MenuModelCursor,
@@ -108,8 +111,8 @@ export const PanelHandOs: React.FC<{ superslides: MenuModel }> = ({
     if (!menuItem) {
       return;
     }
-    if (menuItem.type === MenuItemTypes.menuUrl) {
-      const blob = menuItem.value as MenuItemMenuUrl;
+    if (menuItem.type === MenuItemTypes.menu) {
+      const blob = menuItem.value as MenuItemActionMenu;
       const change: MenuModelCursor = superslides.setMenu(blob.menu);
       // console.log('change', change);
       if (change.menu) {
@@ -131,14 +134,15 @@ export const PanelHandOs: React.FC<{ superslides: MenuModel }> = ({
   useEffect(() => {
     let url: string | undefined = undefined;
     if (menuItem?.type === MenuItemTypes.url) {
-      url = menuItem.value as string;
+      const blob = menuItem.value as MenuItemActionUrl;
+      url = blob.url;
     }
-    if (menuItem?.type === MenuItemTypes.menuUrl) {
-      const blob = menuItem.value as MenuItemMenuUrl;
+    if (menuItem?.type === MenuItemTypes.menu) {
+      const blob = menuItem.value as MenuItemActionMenu;
       url = blob.url;
     }
     setIframeUrl(url);
-  }, [menuItem]);
+  }, [menuItem, menu]);
 
   // On new Superslides, update the menu
   useEffect(() => {
@@ -151,17 +155,24 @@ export const PanelHandOs: React.FC<{ superslides: MenuModel }> = ({
       {controller}
       <HStack>
         {menus.map((m, index) => (
-          <Box
+          <VStack
+            align="flex-start"
             key={index}
             borderColor={m.id === menu.id ? "blue" : undefined}
             onClick={m === menu ? () => onMenuClick : () => onMenuSelect(m)}
             borderWidth="1px"
             borderRadius="lg"
           >
-            {m.name || m.id}
-          </Box>
+            <Tag>{m.name || m.id}</Tag>
+
+
+          </VStack>
         ))}
       </HStack>
+      <VStack align="flex-start">
+        Projector URL: {menu.sendToSlideProjector ? <Link isExternal href={`https://slides-remote.glitch.me/#?channel=${new URL(menu.sendToSlideProjector).pathname.replace("/", "")}`}>{`https://slides-remote.glitch.me/#?channel=${new URL(menu.sendToSlideProjector).pathname.replace("/", "")}`}</Link> : null}
+        </VStack>
+
       <HStack>
         {menuItems.map((item, index) => (
           <Box
@@ -171,7 +182,8 @@ export const PanelHandOs: React.FC<{ superslides: MenuModel }> = ({
             key={index}
             onClick={() => onMenuItemSelect(index)}
           >
-            {item.name || item.id}
+            <Tag>{item.name || item.id}</Tag>
+
           </Box>
         ))}
       </HStack>

@@ -36,27 +36,32 @@ export interface Menu {
     // how to
     // exit: any;
   };
+  // A remote superslides projector
+  sendToSlideProjector?: string;
 }
 
 // export interface MenuItem {
 //   id: string; // needed for this?
 // }
 
-export type MenuItemType =  "menuUrl" | "url" | "metapage";
-export const MenuItemTypes: Record<MenuItemType, MenuItemType> = {
+export type MenuItemActionType = "menu" | "url" | "metapage";
+export const MenuItemTypes: Record<MenuItemActionType, MenuItemActionType> = {
   // menuImmediate: "menuImmediate",
-  menuUrl: "menuUrl",
+  menu: "menu",
   url: "url",
   metapage: "metapage",
 };
 
-export type MenuItemMenuUrl = { url: string; menu: string };
+export type MenuItemActionMenu = { url?: string; menu: string };
+export type MenuItemActionUrl = { url: string };
+export type MenuItemActionMetapage = { metapage: MetapageDefinitionV3 };
 
 export interface MenuItemDefinition {
   id: MenuItemId;
   name?: string;
-  type: MenuItemType;
-  value: string | MetapageDefinitionV3 | MenuItemMenuUrl;
+
+  type: MenuItemActionType;
+  value?: MenuItemActionMenu | MenuItemActionUrl | MenuItemActionMetapage;
 
   // url: string;
   // wss: string;
@@ -107,8 +112,8 @@ export class MenuModel {
       //     throw `MenuItem with id=${item.id} with value=${item.value} refers to a Menu that does not exist!`;
       //   }
       // }
-      if (item.type === MenuItemTypes.menuUrl) {
-        const payload = item.value as MenuItemMenuUrl;
+      if (item.type === MenuItemTypes.menu) {
+        const payload = item.value as MenuItemActionMenu;
         if (typeof payload !== "object") {
           throw `MenuItem with id=${item.id}, value=${item.value} should be of type MenuItemMenuUrl`;
         }
@@ -147,57 +152,85 @@ export class MenuModel {
       default:
         break;
     }
-    // const menuItemId: string | undefined =
-    //   typeof menu.state.selectedIndex === "number"
-    //     ? menu.items[menu.state.selectedIndex]
-    //     : undefined;
 
-    return this.cursor;
+    return this.setMenuItemSelection(menu.state.selectedIndex);
   }
 
   setMenuItemSelection(menuItemIndex: number): MenuModelCursor {
     const currentMenu = this.current;
-    menuItemIndex = Math.max(0, Math.min(menuItemIndex, currentMenu.items.length - 1));
+    menuItemIndex = Math.max(
+      0,
+      Math.min(menuItemIndex, currentMenu.items.length - 1)
+    );
     currentMenu.state.selectedIndex = menuItemIndex;
-    // const menuItemId = currentMenu?.items[menuItemIndex];
-    // const menuItem = this.menuItems[menuItemId];
-    // const result: MenuModelCursor = { item: menuItem };
-    // let newMenuId;
-    // // let newMenu: Menu;
-    // if (menuItem) {
-    //   switch (menuItem.type) {
-    //     case MenuItemTypes.menuUrl:
-    //       //   const payloadUrl = menuItem.value as MenuItemMenuUrl;
-    //       //   newMenuId = payloadUrl.menu;
-    //       //   newMenu = this.menus[newMenuId];
-    //       //   console.log(`switched to menu ${newMenu.id})`);
-    //       //   this.current = newMenu;
-    //       //   result.menu = newMenu;
-    //       break;
-    //     // case MenuItemTypes.menuImmediate:
-    //     //   newMenuId = menuItem.value as MenuItemId;
-    //     //   const deltaResult = this.setMenu(newMenuId);
-    //     //   if (deltaResult.menu?.id === currentMenu.id) {
-    //     //     // this is going to go back and forth between the same menus
-    //     //     // so we need to reset the selectedIndex
-    //     //     // or set it back by one?
-    //     //     currentMenu.state.selectedIndex = -1;
-    //     //   }
-    //     //   return deltaResult;
-    //     // newMenu = this.menus[newMenuId];
-    //     // console.log(`switched to menu ${newMenu.id})`);
-    //     // this.current = newMenu;
-    //     // result.menu = newMenu;
-    //     // break;
-    //     case "url":
-    //       break;
-    //     case "metapage":
-    //       break;
-    //     default:
-    //       throw `Unknown MenuItem type ${menuItem.type}`;
-    //   }
-    // }
+    this.performMenuItemAction();
     return this.cursor;
+  }
+
+  performMenuItemAction(): void {
+    try {
+      const menuItem = this.getMenuItemSelected();
+      if (menuItem) {
+        switch (menuItem.type) {
+          case MenuItemTypes.menu:
+            const payloadMenu = menuItem.value as MenuItemActionMenu;
+
+            if (payloadMenu.url && this.current.sendToSlideProjector) {
+              fetch(this.current.sendToSlideProjector, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  type: "url",
+                  value: payloadMenu.url,
+                }),
+              });
+            }
+
+            break;
+
+          case "url":
+            const payloadUrl = menuItem.value as MenuItemActionUrl;
+
+            if (payloadUrl.url && this.current.sendToSlideProjector) {
+              fetch(this.current.sendToSlideProjector, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  type: "url",
+                  value: payloadUrl.url,
+                }),
+              });
+            }
+
+            break;
+          case "metapage":
+            const payloadMetapage = menuItem.value as MenuItemActionMetapage;
+            const metapageDef = payloadMetapage.metapage;
+            if (this.current.sendToSlideProjector) {
+              fetch(this.current.sendToSlideProjector, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  type: "metapage",
+                  value: metapageDef,
+                }),
+              });
+            }
+
+            break;
+          default:
+            throw `Unknown MenuItem type ${menuItem.type}`;
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   getMenuItemSelected(): MenuItemDefinition | undefined {
@@ -232,26 +265,15 @@ export class MenuModel {
   }
 
   onMenuForward(): MenuModelCursor {
-    const currentMenu = this.current;
-    // const currentMenuIndex = currentMenu.state.selectedIndex;
-    // const menuItemId = currentMenu?.items[currentMenuIndex];
     const menuItem = this.getMenuItemSelected();
-    // const menuItem = this.menuItems[menuItemId];
     if (!menuItem) {
       return this.cursor;
     }
     switch (menuItem.type) {
-      case MenuItemTypes.menuUrl:
-        const payloadUrl = menuItem.value as MenuItemMenuUrl;
+      case MenuItemTypes.menu:
+        const payloadUrl = menuItem.value as MenuItemActionMenu;
         const newMenuId = payloadUrl.menu;
         return this.setMenu(newMenuId);
-        // const newMenu = this.menus[newMenuId];
-        // this.current = newMenu;
-        // const newMenuIndex = this.current?.state?.selectedIndex;
-        // const newMenuItemId = this.current?.items[newMenuIndex];
-        // const newMenuItem = this.menuItems[newMenuItemId];
-
-        // return { menu: this.current, item: newMenuItem };
       default:
         console.log(
           `MenuModel Unhandled: onMenuFoward where menuItem.type=${menuItem.type}`
@@ -261,7 +283,10 @@ export class MenuModel {
   }
 
   onMenuBack(): MenuModelCursor {
-    if (this.menuHistory.length > 1 && this.current !== this.menuHistory[this.menuHistory.length-1]) {
+    if (
+      this.menuHistory.length > 1 &&
+      this.current !== this.menuHistory[this.menuHistory.length - 1]
+    ) {
       const previousMenu = this.menuHistory.pop()!;
       this.current = previousMenu;
       // if you go back, you might end up on a MenuItem that immediately takes you to that Menu again,
@@ -270,15 +295,13 @@ export class MenuModel {
     return this.cursor;
   }
 
-  public get cursor() :MenuModelCursor {
+  public get cursor(): MenuModelCursor {
     return {
       menu: this.current,
       item: this.getMenuItemSelected(),
       isMenuItemControlled: false,
     };
   }
-
-
 
   reset(): MenuModelCursor {
     this.current = this.root;
