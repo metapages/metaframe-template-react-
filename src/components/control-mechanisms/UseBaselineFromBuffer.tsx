@@ -82,7 +82,7 @@ export const UseBaselineFromBuffer: React.FC = () => {
   );
 
   return (
-    <VStack align="flex-start" w="100%">
+    <VStack align="flex-start" w="100%" borderWidth='1px' borderRadius='lg' p={2}>
       <Box w="100%">Mean Orientation Diff</Box>
       <CanvasElement height={20} render={rendermeanOrientationDifferences} />
       <Box w="100%">New Baseline Quaternion: {newBaselineQuaternionRef.current ? "true" : "false"}</Box>

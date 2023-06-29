@@ -56,7 +56,7 @@ export const PanelHandOs: React.FC<{ superslides: MenuModel }> = ({
   );
 
   const onMenuDirection = useCallback(
-    (direction: TapDirection) => {
+    (direction: TapDirection | undefined) => {
       // console.log(`onMenuDirection(${direction})`);
       let change: MenuModelCursor | undefined;
       if (direction === "left") {

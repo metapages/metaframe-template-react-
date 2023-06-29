@@ -350,13 +350,13 @@ export const LeftRightSwitchNoPhysics: React.FC<{
 
   return (
     <VStack align="flex-start" w="100%">
-      <Box w="100%">Selected Step</Box>
+      <AccelerometerButtons onDirection={() => {}}/>
+      {/* <Box w="100%">Selected Step</Box> */}
       {/* <Box w="100%">{actuallySelectedStep}</Box> */}
       <Box w="100%">Normalized yaw (left/right)</Box>
       <CanvasElement height={20} render={renderYawValue} />
-      <Box w="100%">Slider </Box>
+      {/* <Box w="100%">Slider </Box> */}
       <UseBaselineFromBuffer />
-      <AccelerometerButtons onDirection={() => {}}/>
     </VStack>
   );
 };

@@ -17,7 +17,7 @@ export const MenuTypes: Record<MenuType, MenuType> = {
 
 export type MenuController = "Default";
 
-export type TapDirection = "forward" | "back" | "left" | "right";
+export type TapDirection = "forward" | "back" | "left" | "right" | "up" | "down";
 
 export interface Menu {
   id: MenuId;

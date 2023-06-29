@@ -29,7 +29,11 @@ export const useZeroOrientationFromBuffer = (args: {
   // when you are just pausing, not waiting to reset
   timeDelayRecheckBaselineAfterSetting?: number;
 }) => {
-  const { bufferSize, tolerance = 0.14, timeDelayRecheckBaselineAfterSetting=1500 } = args;
+  const {
+    bufferSize,
+    tolerance = 0.14,
+    timeDelayRecheckBaselineAfterSetting = 1500,
+  } = args;
   const orientationBuffer: EulerArray[] = [...Array(bufferSize)].map((_) => [
     0, 0, 0,
   ]);
@@ -40,7 +44,6 @@ export const useZeroOrientationFromBuffer = (args: {
   let sumOrientationBufferDifferences = 0;
   let meanOrientationBufferDifferences = 0;
   let overallMax = 0;
-
 
   const processOrientationStream = (o1: EulerArray) => {
     orientationBuffer[orientationBufferIndex] = o1;
@@ -54,7 +57,8 @@ export const useZeroOrientationFromBuffer = (args: {
     // this way we don't have to compute the entire thing every update
     sumOrientationBufferDifferences += diff - prevDifference;
     overallMax = Math.max(sumOrientationBufferDifferences, overallMax);
-    meanOrientationBufferDifferences = sumOrientationBufferDifferences / bufferSize;
+    meanOrientationBufferDifferences =
+      sumOrientationBufferDifferences / bufferSize;
     orientationBufferIndex++;
     if (orientationBufferIndex === bufferSize - 1) {
       orientationBufferIndex = 0;
@@ -72,10 +76,14 @@ export const useZeroOrientationFromBuffer = (args: {
     processOrientationStream(orientation);
 
     if (!isTakingAPauseAfterMovingEnough) {
-
       if (meanOrientationBufferDifferences < tolerance) {
         // then use the current as the baseline
-        var q = Quaternion.fromEuler(orientation[0] * rad, orientation[1] * rad, orientation[2] * rad, 'ZXY');
+        var q = Quaternion.fromEuler(
+          orientation[0] * rad,
+          orientation[1] * rad,
+          orientation[2] * rad,
+          "ZXY"
+        );
         baselineQuaternion = q;
         setBaselineQuaternion = true;
         // console.log(`🐸 new baselineQuaternion ${new Date().getTime()}`);
@@ -88,7 +96,6 @@ export const useZeroOrientationFromBuffer = (args: {
             setIntervalId = undefined;
           }, timeDelayRecheckBaselineAfterSetting);
         }
-
       }
     }
 
@@ -96,7 +103,7 @@ export const useZeroOrientationFromBuffer = (args: {
       const rotated = rotateEulerFromBaselineQuaternion(
         orientation,
         baselineQuaternion
-        );
+      );
       // orientation = [rotated.pitch, rotated.roll, rotated.yaw];
       // this is the order that the phone sends for user orientation
       orientation = [rotated.yaw, rotated.pitch, rotated.roll];
@@ -108,59 +115,210 @@ export const useZeroOrientationFromBuffer = (args: {
       orientation,
       newBaselineQuaternion: setBaselineQuaternion,
       takingABreak: isTakingAPauseAfterMovingEnough,
-    }
+    };
   };
 };
 
-type TapArgs = {
-  bufferSize?: number;
+// All times are in seconds unless otherwise specified
+export type TapArgs = {
+  // default 60
+  eventsPerSecond?: number;
+  // When the threshold is reached, how much of the time buffer
+  // before and after to use for the tap calculation
+  // timeBufferWindowOnThreshold?: [number, number];
+  timeBufferWindowOnThreshold?: number;
+
+  // bufferSize?: number;
   // what is considered a "tap"
-  tolerance?: number;
+  toleranceAccelerationMax?: number;
+  // what is considered a "tap"
+  toleranceDisplacement?: number;
   // tap buffer delay before considering another tap
   tapBufferInterval?: number;
+  // acceleration event index for measuring the tap
+
+
 };
+type ButtonTap = number;
+// type ButtonTapEstimate = number;
+// type AccelerationSum = number;
+type TapResult = [
+  ButtonTap,
+  EulerArray[],
+  // [ButtonTapEstimate, ButtonTapEstimate, ButtonTapEstimate],
+  // [AccelerationSum, AccelerationSum, AccelerationSum]
+];
+
+// toleranceDisplacement
+// toleranceAccelerationMax
+
 // Create accelerometer button taps
-export const createAbsoluteAccelerationFilter = (args: TapArgs) :(acceleration:EulerArray) => number => {
-  const { bufferSize, tolerance = 20, tapBufferInterval = 30 } = args;
-  const buffer: EulerArray[] = new Array(bufferSize).fill([0, 0, 0]);
+export const createAbsoluteAccelerationFilter = (
+  args: TapArgs
+): ((acceleration: EulerArray) => TapResult) => {
+  const {
+    // This is hard-coded in the iOS Superslides app
+    eventsPerSecond = 30,
+    // emperical checking says 1/6 of a second is the minimum needed time window to get
+    // all the acceleration data needed to calculate a tap
+    timeBufferWindowOnThreshold = 1.0 / 6,
+    // emperical checking this value is what should trigger a tap
+    toleranceAccelerationMax = 20,
+    // is this still needed?
+    // toleranceDisplacement = 23,
+    // how long to wait before considering another tap?
+    // start high then work down
+    tapBufferInterval = 0.5,
+   } = args;
+  const BufferSize = Math.floor(timeBufferWindowOnThreshold * eventsPerSecond);
+  const Buffer: EulerArray[] = new Array(BufferSize).fill([0, 0, 0]);
+  // const TapEstimate: [ButtonTapEstimate, ButtonTapEstimate, ButtonTapEstimate] =
+  //   [0, 0, 0];
+  // const accelerationSum: [AccelerationSum, AccelerationSum, AccelerationSum] = [0, 0, 0];
+  const ResultReturned: TapResult = [0, Buffer]; // re-use for efficiency
   let bufferIndex = 0;
   // after a tap, wait a bit before considering another tap
   let stepsBeforeConsideredTap = 0;
-  let currentActiveAxis = 0;
+  // let currentActiveAxis = 0;
+
+  // after a tap is detected, wait this many events before considering another tap
+  const TapBufferIntervalSteps = Math.floor(tapBufferInterval * eventsPerSecond);
+
+  // after a tap threshold is reached, wait a bit to capture the full event buffer
+  // because sometimes the first direction is not the "actual" direction due to
+  // the sudden stop motion
+  const TotalEventsUntilTapBufferIsChecked = Math.floor(BufferSize / 2);
+  let eventsUntilTapBufferIsChecked = 0;
+
+  console.log('TotalEventsUntilTapBufferIsChecked', TotalEventsUntilTapBufferIsChecked);
+
+
   return (acceleration: EulerArray) => {
-    buffer[bufferIndex] = acceleration;
-    if (stepsBeforeConsideredTap > 0) {
-      stepsBeforeConsideredTap--;
-    }
+    // always add the acceleration to the buffer
+    Buffer[bufferIndex] = acceleration;
+    bufferIndex = bufferIndex === (BufferSize - 1) ? 0 : bufferIndex + 1;
+    // countdowns
+    stepsBeforeConsideredTap = Math.max(0, stepsBeforeConsideredTap - 1);
+    const checkBuffer = eventsUntilTapBufferIsChecked === 1;
+    eventsUntilTapBufferIsChecked = Math.max(0, eventsUntilTapBufferIsChecked - 1);
+
 
     // we already tapped recently, so don't consider another tap
     if (stepsBeforeConsideredTap > 0) {
-      return currentActiveAxis;
+      // console.log(`🐸 returning stepsBeforeConsideredTap ${stepsBeforeConsideredTap}`);
+      return ResultReturned;
+    }
+
+    // set to zero by default
+    ResultReturned[0] = 0;
+
+    // are we already waiting for the tap buffer to fill so we can check?
+    if (eventsUntilTapBufferIsChecked > 0) {
+      // console.log(`🐸 returning eventsUntilTapBufferIsChecked ${eventsUntilTapBufferIsChecked}`);
+      return ResultReturned;
+    }
+
+    if (checkBuffer) {
+      console.log(`🐸 checkBuffer ${new Date().getTime()}`);
+      let highestOrLowestAll = [0,0,0];
+      for (let i = 0; i < 3; i++) {
+        let windowIndex = bufferIndex - Math.floor(BufferSize * 0.66);
+        if (windowIndex < 0) {
+          windowIndex = BufferSize + windowIndex;
+        }
+        let steps = 0;
+        let sum = 0;
+        let highestOrLowest = 0;
+        while (steps < BufferSize) {
+          steps++;
+          sum += Buffer[windowIndex][i];
+          if (Math.abs(Buffer[windowIndex][i]) > Math.abs(highestOrLowest)) {
+            highestOrLowest = Buffer[windowIndex][i];
+          }
+        }
+        if (Math.abs(highestOrLowest) > toleranceAccelerationMax) {
+          // tap detected!
+          console.log(`💮 tap detected! ${i} ${highestOrLowest}`)
+          highestOrLowestAll[i] = highestOrLowest;
+        }
+      }
+      console.log('highestOrLowestAll', highestOrLowestAll);
+      let highestIndex = 0;
+      for (let i = 1; i < 3; i++) {
+        if (Math.abs(highestOrLowestAll[i]) > Math.abs(highestOrLowestAll[i - 1])) {
+          highestIndex = i;
+        }
+      }
+
+      // const highestIndex = highestOrLowestAll.indexOf(Math.max(...highestOrLowestAll.map(Math.abs)));
+      console.log('highestIndex', highestIndex);
+      ResultReturned[0] = highestOrLowestAll[highestIndex] > 0 ? (highestIndex + 1) : -(highestIndex + 1);
+      // wait until some time before considering another tap
+      stepsBeforeConsideredTap = TapBufferIntervalSteps;
+
+
     } else {
-      currentActiveAxis = 0;
+      // check if we have reached the threshold, it begins accretion of the buffer
+      for (let i = 0; i < 3; i++) {
+
+        // check if we are over the threshold
+        if (Math.abs(acceleration[i]) >= toleranceAccelerationMax) {
+          console.log(`🐸 threshold reached ${i} ${acceleration[i]} eventsUntilTapBufferIsChecked = ${TotalEventsUntilTapBufferIsChecked}`);
+          // this triggers, we can break out now since we are going to wait for the buffer to fill
+          eventsUntilTapBufferIsChecked = TotalEventsUntilTapBufferIsChecked;
+          break;
+        }
+      }
+
     }
+
     // ok, are we tapping?
-    if (Math.abs(acceleration[0]) > tolerance) {
-      // we are tapping, so wait a bit before considering another tap
-      stepsBeforeConsideredTap = tapBufferInterval;
-      // currentActiveAxis = acceleration[0] > 0 ? 1 : -1;
-      currentActiveAxis = buffer.reduce((acc, currentAcc) => acc + currentAcc[0] > 0 ? 1 : -1, 0) > 0 ? 1 : -1;
-      return currentActiveAxis;
-    }
-    if (Math.abs(acceleration[1]) > tolerance) {
-      // we are tapping, so wait a bit before considering another tap
-      stepsBeforeConsideredTap = tapBufferInterval;
-      // currentActiveAxis = acceleration[1] > 0 ? 2 : -2;
-      currentActiveAxis = buffer.reduce((acc, currentAcc) => acc + currentAcc[1] > 0 ? 1 : -1, 0) > 0 ? 2 : -2;
-      return currentActiveAxis;
-    }
-    if (Math.abs(acceleration[2]) > tolerance) {
-      // we are tapping, so wait a bit before considering another tap
-      stepsBeforeConsideredTap = tapBufferInterval;
-      // currentActiveAxis = acceleration[2] > 0 ? 3 : -3;
-      currentActiveAxis = buffer.reduce((acc, currentAcc) => acc + currentAcc[2] > 0 ? 1 : -1, 0) > 0 ? 3 : -3;
-      return currentActiveAxis;
-    }
-    return currentActiveAxis;
+    // if (Math.abs(acceleration[0]) > toleranceAccelerationMax) {
+    //   // we are tapping, so wait a bit before considering another tap
+    //   stepsBeforeConsideredTap = tapBufferIntervalSteps;
+    //   // currentActiveAxis = acceleration[0] > 0 ? 1 : -1;
+    //   // accelerationSum[0] = 0;
+    //   tapEstimate[0] =
+    //     buffer.reduce(
+    //       (acc, currentAcc) => (acc + currentAcc[0] > 0 ? 1 : -1),
+    //       0
+    //     ) > 0
+    //       ? 1
+    //       : -1;
+    //   resultReturned[0] = tapEstimate[0];
+    //   // return currentActiveAxis;
+    // }
+
+    // if (Math.abs(acceleration[1]) > toleranceAccelerationMax) {
+    //   // we are tapping, so wait a bit before considering another tap
+    //   stepsBeforeConsideredTap = tapBufferIntervalSteps;
+    //   // currentActiveAxis = acceleration[1] > 0 ? 2 : -2;
+    //   currentActiveAxis =
+    //     buffer.reduce(
+    //       (acc, currentAcc) => (acc + currentAcc[1] > 0 ? 1 : -1),
+    //       0
+    //     ) > 0
+    //       ? 2
+    //       : -2;
+    //   resultReturned[0] = currentActiveAxis;
+    //   // return currentActiveAxis;
+    // }
+    // if (Math.abs(acceleration[2]) > tolerance) {
+    //   // we are tapping, so wait a bit before considering another tap
+    //   stepsBeforeConsideredTap = tapBufferIntervalSteps;
+    //   // currentActiveAxis = acceleration[2] > 0 ? 3 : -3;
+    //   currentActiveAxis =
+    //     buffer.reduce(
+    //       (acc, currentAcc) => (acc + currentAcc[2] > 0 ? 1 : -1),
+    //       0
+    //     ) > 0
+    //       ? 3
+    //       : -3;
+    //   resultReturned[0] = currentActiveAxis;
+    //   // return currentActiveAxis;
+    // }
+
+    return ResultReturned;
+    // return currentActiveAxis;
   };
 };
