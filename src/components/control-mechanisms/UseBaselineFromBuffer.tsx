@@ -4,11 +4,12 @@ import {
   useRef,
 } from 'react';
 
+import { useStore } from '/@/store';
+
 import {
   Box,
   VStack,
 } from '@chakra-ui/react';
-import { useMetaframe } from '@metapages/metaframe-hook';
 
 import { EulerArray } from '../common';
 import { CanvasElement } from '../generic/CanvasElement';
@@ -21,17 +22,19 @@ import { useZeroOrientationFromBuffer } from '../hand-os/Filters';
  */
 export const UseBaselineFromBuffer: React.FC = () => {
 
-  const metaframeObject = useMetaframe();
   const meanOrientationDifferences  = useRef<number>(0);
   const maxMeanOrientationDifferences  = useRef<number>(0);
   const maxOrientationDifferences  = useRef<number>(0);
   const newBaselineQuaternionRef  = useRef<boolean>(false);
   const takingABreakRef  = useRef<boolean>(false);
 
+  const deviceIO = useStore(
+    (state) => state.deviceIO
+  );
+
 
   useEffect(() => {
-    const metaframe = metaframeObject.metaframe;
-    if (!metaframe) {
+    if (!deviceIO) {
       return;
     }
     const disposers: (() => void)[] = [];
@@ -39,23 +42,22 @@ export const UseBaselineFromBuffer: React.FC = () => {
     const bufferSize = 30;
     const processOrientation = useZeroOrientationFromBuffer({bufferSize, tolerance});
 
-    disposers.push(
-      metaframe.onInput("ao", (orientation: EulerArray) => {
-        const {meanOrientationBufferDifferences, overallMax, newBaselineQuaternion, takingABreak } = processOrientation(orientation);
-        newBaselineQuaternionRef.current = newBaselineQuaternion;
-        meanOrientationDifferences.current = meanOrientationBufferDifferences;
-        takingABreakRef.current = takingABreak;
-        maxMeanOrientationDifferences.current = Math.max(maxMeanOrientationDifferences.current, meanOrientationBufferDifferences);
-        maxOrientationDifferences.current = overallMax;
-      }),
-    );
+    const bindingOrientation = deviceIO.userOrientation.add((orientation: EulerArray) => {
+      const {meanOrientationBufferDifferences, overallMax, newBaselineQuaternion, takingABreak } = processOrientation(orientation);
+      newBaselineQuaternionRef.current = newBaselineQuaternion;
+      meanOrientationDifferences.current = meanOrientationBufferDifferences;
+      takingABreakRef.current = takingABreak;
+      maxMeanOrientationDifferences.current = Math.max(maxMeanOrientationDifferences.current, meanOrientationBufferDifferences);
+      maxOrientationDifferences.current = overallMax;
+    });
+    disposers.push(() => deviceIO.userOrientation.detach(bindingOrientation));
 
     return () => {
       while (disposers.length > 0) {
         disposers.pop()?.();
       }
     };
-  }, [metaframeObject?.metaframe]);
+  }, [deviceIO]);
 
   const rendermeanOrientationDifferences = useCallback(
     (ctx: CanvasRenderingContext2D) => {

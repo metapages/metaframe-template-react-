@@ -5,11 +5,12 @@ import {
   useState,
 } from 'react';
 
+import { useStore } from '/@/store';
+
 import {
   Box,
   VStack,
 } from '@chakra-ui/react';
-import { useMetaframe } from '@metapages/metaframe-hook';
 
 import {
   clamp,
@@ -40,14 +41,20 @@ export const RotaryConstantSpeedSwitchNoPhysics: React.FC<{
   const yawNormalized = useRef<number>(0.5);
   const rollNormalized = useRef<number>(0);
   // const distanceFromStepNormalized = useRef<number>(0);
-  const metaframeObject = useMetaframe();
+  // const metaframeObject = useMetaframe();
+
+  const deviceIO = useStore(
+    (state) => state.deviceIO
+  );
+
+
   const stepRef = useRef<number>(startStep);
   const [stepState, setStepState] = useState<number>(startStep);
   const [actuallySelectedStep, setActuallySelectedStep] = useState<number>(startStep);
 
   useEffect(() => {
-    const metaframe = metaframeObject.metaframe;
-    if (!metaframe) {
+    // const metaframe = metaframeObject.metaframe;
+    if (!deviceIO) {
       return;
     }
 
@@ -117,8 +124,10 @@ export const RotaryConstantSpeedSwitchNoPhysics: React.FC<{
 
         stepRef.current = index;
         currentStep = index;
-        metaframe.setOutput("index", currentStep + 1);
-        metaframe.setOutput("h", {
+
+
+        // metaframe.setOutput("index", currentStep + 1);
+        deviceIO.haptics.dispatch({
           pattern: [0, 100, 0, 100],
           intensities: [0, 100, 0, 255],
         });
@@ -159,11 +168,11 @@ export const RotaryConstantSpeedSwitchNoPhysics: React.FC<{
       }
     }, 1000 / 30);
     return () => clearInterval(interval);
-  }, [metaframeObject, startStep, steps, setStep]);
+  }, [deviceIO, startStep, steps, setStep]);
 
   useEffect(() => {
-    const metaframe = metaframeObject.metaframe;
-    if (!metaframe) {
+
+    if (!deviceIO) {
       return;
     }
     const disposers: (() => void)[] = [];
@@ -185,9 +194,8 @@ export const RotaryConstantSpeedSwitchNoPhysics: React.FC<{
 
     const processOrientation = useZeroOrientationFromBuffer({bufferSize:30, tolerance: 6});
 
-    disposers.push(
-      metaframe.onInput("uo", (rawOrientation: EulerArray) => {
-        let { orientation } = processOrientation(rawOrientation);
+    const bindingOrientation = deviceIO.userOrientation.add((rawOrientation: EulerArray) => {
+      let { orientation } = processOrientation(rawOrientation);
 
         let yaw: number  = orientation[0];
         let roll: number = orientation[1];
@@ -302,8 +310,14 @@ export const RotaryConstantSpeedSwitchNoPhysics: React.FC<{
         //     // metaframe.setOutput("distance-to-step", distanceFromStep);
         //   }
         // }
-      })
-    );
+
+
+    });
+    disposers.push(() => deviceIO.userOrientation.detach(bindingOrientation));
+
+
+
+
 
     return () => {
       while (disposers.length > 0) {
@@ -311,12 +325,11 @@ export const RotaryConstantSpeedSwitchNoPhysics: React.FC<{
       }
     };
   }, [
-    metaframeObject?.metaframe,
+    deviceIO,
     steps,
     startStep,
     setStep,
     yawNormalized,
-    // quaternionBaseline,
   ]);
 
   const renderYawValue = useCallback(

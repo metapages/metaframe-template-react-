@@ -1,40 +1,38 @@
 import { useCallback } from 'react';
 
+import { useStore } from '/@/store';
+
 import { Button } from '@chakra-ui/react';
-import { useMetaframe } from '@metapages/metaframe-hook';
 
-type Haptic = {
-  amplitude?: number;
-  duration?: number;
-  pattern?: number[];
-  intensities?: number[];
-  repeat?: number;
-}
+import { Haptic } from './haptics-common';
 
-export const ButtonSendHapticSignal: React.FC<{haptic:Haptic, name:string}> = ({haptic, name}) => {
-  const metaframeObject = useMetaframe();
+export const ButtonSendHapticSignal: React.FC<{
+  haptic: Haptic;
+  name: string;
+}> = ({ haptic, name }) => {
+  const deviceIO = useStore((state) => state.deviceIO);
 
   const onClick = useCallback(() => {
-    const metaframe = metaframeObject.metaframe;
-    if (!metaframe) {
+    if (!deviceIO) {
       return;
     }
-
-    metaframe.setOutput("h", {
+    deviceIO.haptics.dispatch({
       ...haptic,
-      repeat : haptic.repeat === undefined ? -1 : haptic.repeat,
+      repeat: haptic.repeat === undefined ? -1 : haptic.repeat,
       duration: haptic.duration === undefined ? -1 : haptic.duration,
       amplitude: haptic.amplitude === undefined ? -1 : haptic.amplitude,
     });
-  }, [metaframeObject, haptic]);
+  }, [deviceIO, haptic]);
 
   return (
     <Button
       aria-label="send haptic signal"
       variant="solid"
-      colorScheme='blue'
+      colorScheme="blue"
       // color="gray.400"
       onClick={onClick}
-    >{name}</Button>
+    >
+      {name}
+    </Button>
   );
 };

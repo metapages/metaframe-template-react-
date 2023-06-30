@@ -8,7 +8,9 @@ import {
 } from '@chakra-ui/react';
 import { useHashParamInt } from '@metapages/hash-query';
 
-import { ButtonSetBaselineQuaternion } from './ButtonSetBaselineQuaternion';
+import {
+  ButtonSetBaselineQuaternion,
+} from './control-mechanisms/ButtonSetBaselineQuaternion';
 import {
   HapticFeedbackTesting,
 } from './control-mechanisms/haptics/HapticFeedbackTesting';
@@ -26,6 +28,7 @@ import { StepDialSlider } from './control-mechanisms/StepDialSlider';
 import {
   UseBaselineFromBuffer,
 } from './control-mechanisms/UseBaselineFromBuffer';
+import { EmbeddedDeviceConnection } from './hand-os/EmbeddedDeviceConnection';
 
 /**
  * Just an example very basic output of incoming inputs
@@ -41,6 +44,7 @@ export const PanelControllers: React.FC = () => {
 
   return (
     <VStack align="flex-start">
+      <EmbeddedDeviceConnection />
       <ButtonSetBaselineQuaternion />
       <Tabs
         align="start"

@@ -3,6 +3,7 @@
   /* 16:9 aspect ratio */
   padding-top: 56.25%;
   position: relative;
+  background-color: white;
 }
 .iframe-container iframe {
   border: 0;

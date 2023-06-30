@@ -3,9 +3,9 @@ import { MetapageDefinitionV3 } from '@metapages/metapage';
 import { RotateObject1 } from './example-model-metapages';
 import {
   Menu,
+  MenuConfig,
   MenuItemDefinition,
   MenuItemTypes,
-  MenuModel,
 } from './MenuModel';
 
 const menuItemUrlTextSlide1: MenuItemDefinition = {
@@ -87,8 +87,8 @@ const menuItemGoToMenu2: MenuItemDefinition = {
   },
 };
 
-menu1.items.push(menuItemGoToMenu2.id);
-menu2.items.push(menuItemGoToMenu1.id);
+menu1.items.unshift(menuItemGoToMenu2.id);
+menu2.items.unshift(menuItemGoToMenu1.id);
 
 const metapageExample1: MenuItemDefinition = {
   id: "Rotate widget",
@@ -100,7 +100,7 @@ const metapageExample1: MenuItemDefinition = {
 }
 menu1.items.push(metapageExample1.id);
 
-export const MENU_ITEMS: MenuItemDefinition[] = [
+const MENU_ITEMS: MenuItemDefinition[] = [
   ...threeSlidesMenu1,
   ...threeSlidesMenu2,
   metapageExample1,
@@ -108,6 +108,12 @@ export const MENU_ITEMS: MenuItemDefinition[] = [
   menuItemGoToMenu2,
 ];
 
-export const MENUS: Menu[] = [menu1, menu2];
+const MENUS: Menu[] = [menu1, menu2];
 
-export const DEMO_MENU = new MenuModel(MENUS, MENU_ITEMS);
+export const DemoMenuConfig :MenuConfig = {menus:MENUS, menuItems: MENU_ITEMS};
+
+// export const generateDemoMenu = (channel:string) => {
+//   const menuItems = processAllMenuItems(MENU_ITEMS, channel);
+//   const demoMenu = new MenuModel({menus:MENUS, menuItems});
+//   return demoMenu;
+// }

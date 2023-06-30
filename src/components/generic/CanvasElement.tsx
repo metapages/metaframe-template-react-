@@ -22,8 +22,8 @@ export const CanvasElement: React.FC<{
     }
 
     const interval = setInterval(() => {
-      if (ref.current!.getContext("2d")) {
-        render(ref.current!.getContext("2d") as CanvasRenderingContext2D);
+      if (ref.current?.getContext("2d")) {
+        render(ref.current.getContext("2d") as CanvasRenderingContext2D);
       }
     }, 1000 / 30);
 

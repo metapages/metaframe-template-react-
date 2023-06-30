@@ -5,11 +5,12 @@ import {
   useState,
 } from 'react';
 
+import { useStore } from '/@/store';
+
 import {
   Box,
   VStack,
 } from '@chakra-ui/react';
-import { useMetaframe } from '@metapages/metaframe-hook';
 
 import { EulerArray } from '../common';
 import {
@@ -38,7 +39,9 @@ export const AccelerometerButtons: React.FC<{
   onDirection: (d: TapDirection | undefined) => void;
 }> = ({ onDirection }) => {
 
-  const metaframeObject = useMetaframe();
+  const deviceIO = useStore(
+    (state) => state.deviceIO
+  );
   const accelerationButtonRef  = useRef<number>(0);
   const [buffer, setBuffer]  = useState<EulerArray[]>([]);
   const [lastDirection, setLastDirection] = useState<string>("");
@@ -46,28 +49,19 @@ export const AccelerometerButtons: React.FC<{
   const EventsPerSecond = 30;
   // How long to wait (in seconds) until checking for another tap
   const TapIntervalSeconds = 0.5;
-  // How long to wait (in events) until checking for another tap
-  // const EventsForTapInterval = Math.floor(EventsPerSecond * TapIntervalSeconds);
-  // How many events to buffer to check for tap events
-  // const BufferTimeSeconds = 0.5;
-  // const TapBufferSize = Math.floor(EventsPerSecond * BufferTimeSeconds);
   // Displacement tolerance for tap events
-  // const ToleranceDisplacement = 3 * TapBufferSize;
   const ToleranceAccelerationMax = 15;
 
-  // const bufferSize = 30;
 
 
   useEffect(() => {
-    const metaframe = metaframeObject.metaframe;
-    if (!metaframe) {
+    if (!deviceIO) {
       return;
     }
     const disposers: (() => void)[] = [];
 
     const accelerometerButtonDetect = createAbsoluteAccelerationFilter({
       eventsPerSecond: EventsPerSecond,
-      // toleranceDisplacement:ToleranceDisplacement,
       toleranceAccelerationMax: ToleranceAccelerationMax,
       tapBufferInterval: TapIntervalSeconds,
       timeBufferWindowOnThreshold: 1.0 / 3,
@@ -81,10 +75,8 @@ export const AccelerometerButtons: React.FC<{
     // }, 1000);
     // disposers.push(() => clearInterval(eventCountInterval));
 
-    disposers.push(
-      metaframe.onInput("ua", (acceleration: EulerArray) => {
-        // eventCount++;
-        const [accelerometerButton, internalBuffer] = accelerometerButtonDetect(acceleration);
+    const bindingAccelerometer = deviceIO.userAccelerometer.add((acceleration: EulerArray) => {
+      const [accelerometerButton, internalBuffer] = accelerometerButtonDetect(acceleration);
 
         if (!isBufferSet) {
           setBuffer(internalBuffer);
@@ -98,19 +90,17 @@ export const AccelerometerButtons: React.FC<{
           if (direction) {
             setLastDirection(direction);
           }
-          // if (direction) {
-          // }
         }
         accelerationButtonRef.current = accelerometerButton;
-      }),
-    );
+    });
+    disposers.push(() => deviceIO.userAccelerometer.detach(bindingAccelerometer));
 
     return () => {
       while (disposers.length > 0) {
         disposers.pop()?.();
       }
     };
-  }, [metaframeObject?.metaframe, onDirection, setLastDirection]);
+  }, [deviceIO, onDirection, setLastDirection]);
 
   const render = useCallback(
     (ctx: CanvasRenderingContext2D) => {
@@ -124,7 +114,7 @@ export const AccelerometerButtons: React.FC<{
 
   return (
     <VStack align="flex-start" w="100%" borderWidth='1px' borderRadius='lg' p={2}>
-      <Box w="100%">Accelerometer Button</Box>
+      <Box w="100%">Accelerometer Buttons</Box>
       <CanvasElement height={20} render={render} />
       <Box>Last direction: {lastDirection}</Box>
       {/* <AccelerometerButtonsDiagnosis buffer={buffer} toleranceDisplacement={ToleranceDisplacement} buttonComputeTimeout={TapIntervalSeconds * 1000} /> */}

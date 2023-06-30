@@ -4,6 +4,8 @@ import {
   useState,
 } from 'react';
 
+import { useStore } from '/@/store';
+
 import {
   Box,
   HStack,
@@ -12,10 +14,18 @@ import {
   VStack,
 } from '@chakra-ui/react';
 
-import { ButtonSetBaselineQuaternion } from '../ButtonSetBaselineQuaternion';
 import {
   AccelerometerButtons,
 } from '../control-mechanisms/AccelerometerButtons';
+import {
+  BackHaptic,
+  CannotGoForwardHaptic,
+  CannotGoLeftHaptic,
+  CannotGoRightHaptic,
+  ForwardHaptic,
+  LeftHaptic,
+  RightHaptic,
+} from '../control-mechanisms/haptics/HapticLibrary';
 import {
   Menu,
   MenuItemActionMenu,
@@ -31,9 +41,9 @@ import {
  * The main panel for the HandOS
  *
  */
-export const PanelHandOs: React.FC<{ superslides: MenuModel }> = ({
-  superslides,
-}) => {
+export const PanelHandOs: React.FC<{
+  superslides: MenuModel;
+}> = ({ superslides }) => {
   const [menu, setMenu] = useState<Menu>(superslides.root);
   const [menus, _] = useState<Menu[]>(
     Object.keys(superslides.menus).map((id) => superslides.menus[id])
@@ -41,12 +51,11 @@ export const PanelHandOs: React.FC<{ superslides: MenuModel }> = ({
   const [menuItem, setMenuItem] = useState<MenuItemDefinition | undefined>();
   const [menuItems, setMenuItems] = useState<MenuItemDefinition[]>([]);
   const [iframeUrl, setIframeUrl] = useState<string | undefined>();
+  const deviceIO = useStore((state) => state.deviceIO);
 
   const onMenuItemSelect = useCallback(
     (index: number) => {
-      console.log(`onMenuItemSelect(${index})`);
       const cursor = superslides.setMenuItemSelection(index);
-      // console.log('update', update);
       setMenuItem(cursor.item);
       if (cursor.menu) {
         setMenu(cursor.menu);
@@ -57,64 +66,87 @@ export const PanelHandOs: React.FC<{ superslides: MenuModel }> = ({
 
   const onMenuDirection = useCallback(
     (direction: TapDirection | undefined) => {
-      // console.log(`onMenuDirection(${direction})`);
-      let change: MenuModelCursor | undefined;
+      if (!direction || !deviceIO) {
+        return;
+      }
+      let cursor: MenuModelCursor | undefined;
+
       if (direction === "left") {
-        change = superslides.onMenuLeft();
-        setMenuItem(change.item);
-        if (change.menu) {
-          setMenu(change.menu);
+        cursor = superslides.onMenuLeft();
+        if (cursor.previous) {
+          deviceIO.haptics.dispatch(LeftHaptic);
+          // sendHaptic(LeftHaptic);
+        } else {
+          deviceIO.haptics.dispatch(CannotGoLeftHaptic);
+          // sendHaptic(CannotGoLeftHaptic);
+        }
+        setMenuItem(cursor.item);
+        if (cursor.menu) {
+          setMenu(cursor.menu);
         }
       } else if (direction === "right") {
-        change = superslides.onMenuRight();
-        setMenuItem(change.item);
-        if (change.menu) {
-          setMenu(change.menu);
+        cursor = superslides.onMenuRight();
+        if (cursor.previous) {
+          deviceIO.haptics.dispatch(RightHaptic);
+        } else {
+          deviceIO.haptics.dispatch(CannotGoRightHaptic);
+        }
+        setMenuItem(cursor.item);
+        if (cursor.menu) {
+          setMenu(cursor.menu);
         }
       } else if (direction === "forward") {
-        change = superslides.onMenuForward();
-        if (change.menu) {
-          setMenu(change.menu);
+        cursor = superslides.onMenuForward();
+        if (
+          cursor.previous?.item?.type === MenuItemTypes.menu ||
+          cursor.previous?.item?.type === MenuItemTypes.metapage
+        ) {
+          deviceIO.haptics.dispatch(ForwardHaptic);
+        } else {
+          deviceIO.haptics.dispatch(CannotGoForwardHaptic);
+        }
+
+        setMenuItem(cursor.item);
+        if (cursor.menu) {
+          setMenu(cursor.menu);
         }
       } else if (direction === "back") {
-        change = superslides.onMenuBack();
-        if (change.menu) {
-          setMenu(change.menu);
+        cursor = superslides.onMenuBack();
+        if (cursor.previous && cursor.previous?.menu !== cursor.menu) {
+          deviceIO.haptics.dispatch(BackHaptic);
+          setMenu(cursor.menu);
+        } else {
+          deviceIO.haptics.dispatch(CannotGoForwardHaptic);
         }
       }
     },
-    [menu, setMenuItem, superslides]
+    [setMenuItem, superslides, deviceIO]
   );
 
-  // const controller = menu  ? <RotaryConstantSpeedSwitchNoPhysics steps={menu.items.length} startStep={menu.state.selectedIndex || 0} setStep={onMenuItemSelect} /> : null;
   const controller = menu ? (
     <AccelerometerButtons onDirection={onMenuDirection} />
   ) : null;
 
   const onMenuSelect = useCallback(
     (menu: Menu) => {
-      const { menu: newMenu, item: newMenuItem } = superslides.setMenu(menu.id);
-      if (newMenu) {
-        setMenu(newMenu);
-      }
+      const { menu: newMenu, item } = superslides.setMenu(menu.id);
+      setMenu(newMenu);
+      setMenuItem(item);
     },
     [menu, setMenu]
   );
 
   const onMenuClick = useCallback(() => {
-    // console.log(`onMenuClick onMenuItemSelect(-1)`)
     onMenuItemSelect(-1);
   }, [onMenuItemSelect]);
 
   const onMenuItemClick = useCallback(() => {
-    // console.log('onMenuItemClick', menuItem);
     if (!menuItem) {
       return;
     }
     if (menuItem.type === MenuItemTypes.menu) {
       const blob = menuItem.value as MenuItemActionMenu;
       const change: MenuModelCursor = superslides.setMenu(blob.menu);
-      // console.log('change', change);
       if (change.menu) {
         setMenu(change.menu);
       }
@@ -123,7 +155,6 @@ export const PanelHandOs: React.FC<{ superslides: MenuModel }> = ({
 
   // On new Menu, update the menuItems, and selected
   useEffect(() => {
-    // console.log(`on new menu ${menu.id} superslides.getMenuItemSelected()=${superslides.getMenuItemSelected()?.id}`);
     setMenuItems(
       superslides.current.items.map((itemId) => superslides.menuItems[itemId])
     );
@@ -141,6 +172,13 @@ export const PanelHandOs: React.FC<{ superslides: MenuModel }> = ({
       const blob = menuItem.value as MenuItemActionMenu;
       url = blob.url;
     }
+
+    if (menu.sendToSlideProjector) {
+      url = `https://slides-remote.glitch.me/#?channel=${new URL(
+        menu.sendToSlideProjector
+      ).pathname.replace("/", "")}`;
+    }
+
     setIframeUrl(url);
   }, [menuItem, menu]);
 
@@ -150,8 +188,7 @@ export const PanelHandOs: React.FC<{ superslides: MenuModel }> = ({
   }, [superslides, setMenu]);
 
   return (
-    <VStack align="flex-start">
-      <ButtonSetBaselineQuaternion />
+    <VStack align="flex-start" w="100%">
       {controller}
       <HStack>
         {menus.map((m, index) => (
@@ -164,14 +201,22 @@ export const PanelHandOs: React.FC<{ superslides: MenuModel }> = ({
             borderRadius="lg"
           >
             <Tag>{m.name || m.id}</Tag>
-
-
           </VStack>
         ))}
       </HStack>
       <VStack align="flex-start">
-        Projector URL: {menu.sendToSlideProjector ? <Link isExternal href={`https://slides-remote.glitch.me/#?channel=${new URL(menu.sendToSlideProjector).pathname.replace("/", "")}`}>{`https://slides-remote.glitch.me/#?channel=${new URL(menu.sendToSlideProjector).pathname.replace("/", "")}`}</Link> : null}
-        </VStack>
+        Projector URL:{" "}
+        {menu.sendToSlideProjector ? (
+          <Link
+            isExternal
+            href={`https://slides-remote.glitch.me/#?channel=${new URL(
+              menu.sendToSlideProjector
+            ).pathname.replace("/", "")}`}
+          >{`https://slides-remote.glitch.me/#?channel=${new URL(
+            menu.sendToSlideProjector
+          ).pathname.replace("/", "")}`}</Link>
+        ) : null}
+      </VStack>
 
       <HStack>
         {menuItems.map((item, index) => (
@@ -183,7 +228,6 @@ export const PanelHandOs: React.FC<{ superslides: MenuModel }> = ({
             onClick={() => onMenuItemSelect(index)}
           >
             <Tag>{item.name || item.id}</Tag>
-
           </Box>
         ))}
       </HStack>
@@ -191,11 +235,13 @@ export const PanelHandOs: React.FC<{ superslides: MenuModel }> = ({
       <Box
         borderWidth="1px"
         borderRadius="lg"
+        bg="white"
         w="100%"
         h="500px"
         onClick={onMenuItemClick}
+        className="iframe-container"
       >
-        {iframeUrl ? <iframe src={iframeUrl} /> : null}
+        {iframeUrl ? <iframe className="iframe" src={iframeUrl} /> : null}
       </Box>
     </VStack>
   );

@@ -47,6 +47,7 @@ export const useZeroOrientationFromBuffer = (args: {
 
   const processOrientationStream = (o1: EulerArray) => {
     orientationBuffer[orientationBufferIndex] = o1;
+    // the previous one
     const o2 =
       orientationBufferIndex === 0
         ? orientationBuffer[bufferSize - 1]
@@ -60,7 +61,7 @@ export const useZeroOrientationFromBuffer = (args: {
     meanOrientationBufferDifferences =
       sumOrientationBufferDifferences / bufferSize;
     orientationBufferIndex++;
-    if (orientationBufferIndex === bufferSize - 1) {
+    if (orientationBufferIndex === bufferSize) {
       orientationBufferIndex = 0;
     }
   };
@@ -125,10 +126,7 @@ export type TapArgs = {
   eventsPerSecond?: number;
   // When the threshold is reached, how much of the time buffer
   // before and after to use for the tap calculation
-  // timeBufferWindowOnThreshold?: [number, number];
   timeBufferWindowOnThreshold?: number;
-
-  // bufferSize?: number;
   // what is considered a "tap"
   toleranceAccelerationMax?: number;
   // what is considered a "tap"
@@ -136,21 +134,15 @@ export type TapArgs = {
   // tap buffer delay before considering another tap
   tapBufferInterval?: number;
   // acceleration event index for measuring the tap
-
-
 };
 type ButtonTap = number;
-// type ButtonTapEstimate = number;
-// type AccelerationSum = number;
+
+// The SAME array is returned so check for changes, do not
+// assume a new array. Is this worth it? Am I over-optimizing?
 type TapResult = [
   ButtonTap,
-  EulerArray[],
-  // [ButtonTapEstimate, ButtonTapEstimate, ButtonTapEstimate],
-  // [AccelerationSum, AccelerationSum, AccelerationSum]
+  EulerArray[]
 ];
-
-// toleranceDisplacement
-// toleranceAccelerationMax
 
 // Create accelerometer button taps
 export const createAbsoluteAccelerationFilter = (
@@ -169,20 +161,18 @@ export const createAbsoluteAccelerationFilter = (
     // how long to wait before considering another tap?
     // start high then work down
     tapBufferInterval = 0.5,
-   } = args;
+  } = args;
   const BufferSize = Math.floor(timeBufferWindowOnThreshold * eventsPerSecond);
   const Buffer: EulerArray[] = new Array(BufferSize).fill([0, 0, 0]);
-  // const TapEstimate: [ButtonTapEstimate, ButtonTapEstimate, ButtonTapEstimate] =
-  //   [0, 0, 0];
-  // const accelerationSum: [AccelerationSum, AccelerationSum, AccelerationSum] = [0, 0, 0];
   const ResultReturned: TapResult = [0, Buffer]; // re-use for efficiency
   let bufferIndex = 0;
   // after a tap, wait a bit before considering another tap
   let stepsBeforeConsideredTap = 0;
-  // let currentActiveAxis = 0;
 
   // after a tap is detected, wait this many events before considering another tap
-  const TapBufferIntervalSteps = Math.floor(tapBufferInterval * eventsPerSecond);
+  const TapBufferIntervalSteps = Math.floor(
+    tapBufferInterval * eventsPerSecond
+  );
 
   // after a tap threshold is reached, wait a bit to capture the full event buffer
   // because sometimes the first direction is not the "actual" direction due to
@@ -190,18 +180,17 @@ export const createAbsoluteAccelerationFilter = (
   const TotalEventsUntilTapBufferIsChecked = Math.floor(BufferSize / 2);
   let eventsUntilTapBufferIsChecked = 0;
 
-  console.log('TotalEventsUntilTapBufferIsChecked', TotalEventsUntilTapBufferIsChecked);
-
-
   return (acceleration: EulerArray) => {
     // always add the acceleration to the buffer
     Buffer[bufferIndex] = acceleration;
-    bufferIndex = bufferIndex === (BufferSize - 1) ? 0 : bufferIndex + 1;
+    bufferIndex = bufferIndex === BufferSize - 1 ? 0 : bufferIndex + 1;
     // countdowns
     stepsBeforeConsideredTap = Math.max(0, stepsBeforeConsideredTap - 1);
     const checkBuffer = eventsUntilTapBufferIsChecked === 1;
-    eventsUntilTapBufferIsChecked = Math.max(0, eventsUntilTapBufferIsChecked - 1);
-
+    eventsUntilTapBufferIsChecked = Math.max(
+      0,
+      eventsUntilTapBufferIsChecked - 1
+    );
 
     // we already tapped recently, so don't consider another tap
     if (stepsBeforeConsideredTap > 0) {
@@ -219,8 +208,8 @@ export const createAbsoluteAccelerationFilter = (
     }
 
     if (checkBuffer) {
-      console.log(`🐸 checkBuffer ${new Date().getTime()}`);
-      let highestOrLowestAll = [0,0,0];
+      // console.log(`🐸 checkBuffer ${new Date().getTime()}`);
+      let highestOrLowestAll = [0, 0, 0];
       for (let i = 0; i < 3; i++) {
         let windowIndex = bufferIndex - Math.floor(BufferSize * 0.66);
         if (windowIndex < 0) {
@@ -238,87 +227,40 @@ export const createAbsoluteAccelerationFilter = (
         }
         if (Math.abs(highestOrLowest) > toleranceAccelerationMax) {
           // tap detected!
-          console.log(`💮 tap detected! ${i} ${highestOrLowest}`)
+          // console.log(`💮 tap detected! ${i} ${highestOrLowest}`)
           highestOrLowestAll[i] = highestOrLowest;
         }
       }
-      console.log('highestOrLowestAll', highestOrLowestAll);
+      // console.log('highestOrLowestAll', highestOrLowestAll);
       let highestIndex = 0;
       for (let i = 1; i < 3; i++) {
-        if (Math.abs(highestOrLowestAll[i]) > Math.abs(highestOrLowestAll[i - 1])) {
+        if (
+          Math.abs(highestOrLowestAll[i]) > Math.abs(highestOrLowestAll[i - 1])
+        ) {
           highestIndex = i;
         }
       }
 
       // const highestIndex = highestOrLowestAll.indexOf(Math.max(...highestOrLowestAll.map(Math.abs)));
-      console.log('highestIndex', highestIndex);
-      ResultReturned[0] = highestOrLowestAll[highestIndex] > 0 ? (highestIndex + 1) : -(highestIndex + 1);
+      // console.log('highestIndex', highestIndex);
+      ResultReturned[0] =
+        highestOrLowestAll[highestIndex] > 0
+          ? highestIndex + 1
+          : -(highestIndex + 1);
       // wait until some time before considering another tap
       stepsBeforeConsideredTap = TapBufferIntervalSteps;
-
-
     } else {
       // check if we have reached the threshold, it begins accretion of the buffer
       for (let i = 0; i < 3; i++) {
-
         // check if we are over the threshold
         if (Math.abs(acceleration[i]) >= toleranceAccelerationMax) {
-          console.log(`🐸 threshold reached ${i} ${acceleration[i]} eventsUntilTapBufferIsChecked = ${TotalEventsUntilTapBufferIsChecked}`);
+          // console.log(`🐸 threshold reached ${i} ${acceleration[i]} eventsUntilTapBufferIsChecked = ${TotalEventsUntilTapBufferIsChecked}`);
           // this triggers, we can break out now since we are going to wait for the buffer to fill
           eventsUntilTapBufferIsChecked = TotalEventsUntilTapBufferIsChecked;
           break;
         }
       }
-
     }
-
-    // ok, are we tapping?
-    // if (Math.abs(acceleration[0]) > toleranceAccelerationMax) {
-    //   // we are tapping, so wait a bit before considering another tap
-    //   stepsBeforeConsideredTap = tapBufferIntervalSteps;
-    //   // currentActiveAxis = acceleration[0] > 0 ? 1 : -1;
-    //   // accelerationSum[0] = 0;
-    //   tapEstimate[0] =
-    //     buffer.reduce(
-    //       (acc, currentAcc) => (acc + currentAcc[0] > 0 ? 1 : -1),
-    //       0
-    //     ) > 0
-    //       ? 1
-    //       : -1;
-    //   resultReturned[0] = tapEstimate[0];
-    //   // return currentActiveAxis;
-    // }
-
-    // if (Math.abs(acceleration[1]) > toleranceAccelerationMax) {
-    //   // we are tapping, so wait a bit before considering another tap
-    //   stepsBeforeConsideredTap = tapBufferIntervalSteps;
-    //   // currentActiveAxis = acceleration[1] > 0 ? 2 : -2;
-    //   currentActiveAxis =
-    //     buffer.reduce(
-    //       (acc, currentAcc) => (acc + currentAcc[1] > 0 ? 1 : -1),
-    //       0
-    //     ) > 0
-    //       ? 2
-    //       : -2;
-    //   resultReturned[0] = currentActiveAxis;
-    //   // return currentActiveAxis;
-    // }
-    // if (Math.abs(acceleration[2]) > tolerance) {
-    //   // we are tapping, so wait a bit before considering another tap
-    //   stepsBeforeConsideredTap = tapBufferIntervalSteps;
-    //   // currentActiveAxis = acceleration[2] > 0 ? 3 : -3;
-    //   currentActiveAxis =
-    //     buffer.reduce(
-    //       (acc, currentAcc) => (acc + currentAcc[2] > 0 ? 1 : -1),
-    //       0
-    //     ) > 0
-    //       ? 3
-    //       : -3;
-    //   resultReturned[0] = currentActiveAxis;
-    //   // return currentActiveAxis;
-    // }
-
     return ResultReturned;
-    // return currentActiveAxis;
   };
 };

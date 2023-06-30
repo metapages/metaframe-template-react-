@@ -1,18 +1,24 @@
-import { DEMO_MENU } from './hand-os/example-model';
+import {
+  Box,
+  VStack,
+} from '@chakra-ui/react';
+
+import { EmbeddedDeviceConnection } from './hand-os/EmbeddedDeviceConnection';
 import { PanelHandOs } from './hand-os/PanelHandOs';
+import { useSuperslidesConfig } from './hand-os/useSuperslidesConfig';
 
 /**
  * Just an example very basic output of incoming inputs
  *
  */
 export const PanelMain: React.FC = () => {
+  const { menuModel } = useSuperslidesConfig();
 
   return (
-    <div>
-      {/* <ButtonSetBaselineQuaternion /> */}
-      {/* <SimulationRotarySwitchNoPhysicsFixedOrientation steps={5} startStep={1} /> */}
-      {/* <HapticFeedbackTesting /> */}
-      <PanelHandOs superslides={DEMO_MENU}/>
-    </div>
+    <VStack align="flex-start">
+      <EmbeddedDeviceConnection />
+      { menuModel?
+      <PanelHandOs superslides={menuModel} />  : <Box>...</Box>}
+    </VStack>
   );
 };

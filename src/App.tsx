@@ -1,13 +1,12 @@
 import '/@/app.css';
 
-import { ButtonTabsToggle } from '/@/components/ButtonTabsToggle';
 import { PanelHelp } from '/@/components/PanelHelp';
 import { PanelMain } from '/@/components/PanelMain';
-import { PanelOptions } from '/@/components/PanelOptions';
 
 import {
   EditIcon,
   InfoIcon,
+  UpDownIcon,
   ViewIcon,
 } from '@chakra-ui/icons';
 import {
@@ -19,6 +18,7 @@ import {
   TabPanel,
   TabPanels,
   Tabs,
+  VStack,
 } from '@chakra-ui/react';
 import {
   useHashParam,
@@ -26,6 +26,8 @@ import {
   useHashParamInt,
 } from '@metapages/hash-query';
 
+import { ButtonTabsToggle } from './components/options/ButtonTabsToggle';
+import { PanelOptions } from './components/options/PanelOptions';
 import { PanelControllers } from './components/PanelControllers';
 
 export const App: React.FC = () => {
@@ -56,13 +58,14 @@ export const App: React.FC = () => {
     }
   }
   return (
-    <Tabs index={tab || 0} isLazy={true} onChange={setTab}>
+    <VStack align="flex-start" w="100%">
+    <Tabs index={tab || 0} isLazy={true} onChange={setTab} w="100%">
       <TabList>
         <Tab>
           <ViewIcon /> &nbsp; Superslides
         </Tab>
         <Tab>
-          <EditIcon /> &nbsp; Test Controllers
+          <UpDownIcon /> &nbsp; Controllers
         </Tab>
         <Tab>
           <EditIcon /> &nbsp; Options
@@ -89,5 +92,6 @@ export const App: React.FC = () => {
         </TabPanel>
       </TabPanels>
     </Tabs>
+    </VStack>
   );
 };

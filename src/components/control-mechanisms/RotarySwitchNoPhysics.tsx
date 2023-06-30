@@ -11,7 +11,6 @@ import {
   Box,
   VStack,
 } from '@chakra-ui/react';
-import { useMetaframe } from '@metapages/metaframe-hook';
 
 import {
   EulerArray,
@@ -36,7 +35,10 @@ export const RotarySwitchNoPhysics: React.FC<{
   const yawNormalized = useRef<number>(0);
   const rollNormalized = useRef<number>(0);
   const distanceFromStepNormalized = useRef<number>(0);
-  const metaframeObject = useMetaframe();
+
+  const deviceIO = useStore(
+    (state) => state.deviceIO
+  );
   const stepRef = useRef<number>(startStep);
   const [stepState, setStepState] = useState<number>(startStep);
 
@@ -126,8 +128,8 @@ export const RotarySwitchNoPhysics: React.FC<{
   );
 
   useEffect(() => {
-    const metaframe = metaframeObject.metaframe;
-    if (!metaframe) {
+
+    if (!deviceIO) {
       return;
     }
     const disposers: (() => void)[] = [];
@@ -145,90 +147,189 @@ export const RotarySwitchNoPhysics: React.FC<{
     const newStepHapticDuration = 100;
     const feedbackHapticDuration = 10;
 
-    disposers.push(
-      metaframe.onInput("o", (orientation: EulerArray) => {
-        let yaw: number | undefined;
-        let roll: number | undefined;
-        if (quaternionBaseline) {
-          const rotated = rotateEulerFromBaselineQuaternion(
-            orientation,
-            quaternionBaseline
-          );
-          yaw = rotated.yaw;
-          roll = rotated.roll;
-        } else {
-          yaw = orientation[0];
-          roll = orientation[2];
-        }
+
+    const bindingOrientation = deviceIO.userOrientation.add((orientation: EulerArray) => {
+      let yaw: number | undefined;
+      let roll: number | undefined;
+      if (quaternionBaseline) {
+        const rotated = rotateEulerFromBaselineQuaternion(
+          orientation,
+          quaternionBaseline
+        );
+        yaw = rotated.yaw;
+        roll = rotated.roll;
+      } else {
+        yaw = orientation[0];
+        roll = orientation[2];
+      }
 
 
-        rollNormalized.current = roll;
-        // yaw = Math.max(Math.min(roll, 1.0), -1.0);
-        rollNormalized.current = (roll - -0) / -0.3;
-        rollNormalized.current = Math.max(Math.min(rollNormalized.current, 1.0), -1.0);
-        // rollNormalized.current = 1 - rollNormalized.current;
+      rollNormalized.current = roll;
+      // yaw = Math.max(Math.min(roll, 1.0), -1.0);
+      rollNormalized.current = (roll - -0) / -0.3;
+      rollNormalized.current = Math.max(Math.min(rollNormalized.current, 1.0), -1.0);
+      // rollNormalized.current = 1 - rollNormalized.current;
 
-        // let's use yaw as the force
-        // rotated values [ -1, 1] approx, it's like just under half a circle
-        yaw = Math.max(Math.min(yaw, 1.0), -1.0);
-        yawNormalized.current = (yaw - -1) / 2;
-        yawNormalized.current = 1 - yawNormalized.current;
-        // for rendering
-        // yawNormalized.current = yawNormalized;
-        const now = Date.now();
+      // let's use yaw as the force
+      // rotated values [ -1, 1] approx, it's like just under half a circle
+      yaw = Math.max(Math.min(yaw, 1.0), -1.0);
+      yawNormalized.current = (yaw - -1) / 2;
+      yawNormalized.current = 1 - yawNormalized.current;
+      // for rendering
+      // yawNormalized.current = yawNormalized;
+      const now = Date.now();
 
-        const index = stepValues.findIndex((v) => yawNormalized.current < v);
-        setStepState(index);
-        stepRef.current = index;
+      const index = stepValues.findIndex((v) => yawNormalized.current < v);
+      setStepState(index);
+      stepRef.current = index;
 
-        if (index >= 0 && index < steps && index !== currentStep) {
-          currentStep = index;
-          metaframe.setOutput("index", currentStep + 1);
-          metaframe.setOutput("h", {
-            pattern: [0, newStepHapticDuration],
-            amplitude: [0, 255],
-          });
-          // timeSinceLastStep = now + 1000;
-          timeSinceLastStep = now;
+      if (index >= 0 && index < steps && index !== currentStep) {
+        currentStep = index;
+        // metaframe.setOutput("index", currentStep + 1);
+        deviceIO.haptics.dispatch({
+          pattern: [0, newStepHapticDuration],
+          intensities: [0, 255],
+        });
+        // metaframe.setOutput("h", {
+        //   pattern: [0, newStepHapticDuration],
+        //   amplitude: [0, 255],
+        // });
+        // timeSinceLastStep = now + 1000;
+        timeSinceLastStep = now;
+        timeSinceLastHaptic = now;
+      } else {
+        // feedback haptic
+        const distanceFromStep = stepValuesForDistanceCompute.reduce(
+          (acc: number, current: number) => {
+            return Math.min(Math.abs(current - yawNormalized.current), acc);
+          },
+          1.0
+        );
+
+        // Math.min(Math.abs(yawNormalized - stepValues[currentStep]), currentStep > 0 ? Math.abs(yawNormalized - stepValues[currentStep]) : 0);
+        // metaframe.setOutput("distance-to-step", distanceFromStep);
+        const normalizedDistanceFromStep = distanceFromStep / stepInterval;
+        distanceFromStepNormalized.current = normalizedDistanceFromStep;
+        if (
+          now - timeSinceLastHaptic > feedbackHapticDuration &&
+          now - timeSinceLastStep > newStepHapticDuration &&
+          normalizedDistanceFromStep < 0.2
+        ) {
+          // const normalizedDistanceFromStep = (stepInterval - distanceFromStep) / stepInterval;
+
+          // metaframe.setOutput(
+          //   "distance-to-step-normalized",
+          //   normalizedDistanceFromStep
+          // );
           timeSinceLastHaptic = now;
-        } else {
-          // feedback haptic
-          const distanceFromStep = stepValuesForDistanceCompute.reduce(
-            (acc: number, current: number) => {
-              return Math.min(Math.abs(current - yawNormalized.current), acc);
-            },
-            1.0
+          const amplitude = Math.floor(
+            normalizedDistanceFromStep *
+              HAPTIC_RANGE_FOR_APPROACHING_GENTLE_CONTACT.max
           );
-
-          // Math.min(Math.abs(yawNormalized - stepValues[currentStep]), currentStep > 0 ? Math.abs(yawNormalized - stepValues[currentStep]) : 0);
+          deviceIO.haptics.dispatch({
+            pattern: [0, feedbackHapticDuration],
+            intensities: [0, amplitude],
+          });
+          // metaframe.setOutput("h", {
+          //   pattern: [0, feedbackHapticDuration],
+          //   intensities: [0, amplitude],
+          // });
           // metaframe.setOutput("distance-to-step", distanceFromStep);
-          const normalizedDistanceFromStep = distanceFromStep / stepInterval;
-          distanceFromStepNormalized.current = normalizedDistanceFromStep;
-          if (
-            now - timeSinceLastHaptic > feedbackHapticDuration &&
-            now - timeSinceLastStep > newStepHapticDuration &&
-            normalizedDistanceFromStep < 0.2
-          ) {
-            // const normalizedDistanceFromStep = (stepInterval - distanceFromStep) / stepInterval;
-
-            metaframe.setOutput(
-              "distance-to-step-normalized",
-              normalizedDistanceFromStep
-            );
-            timeSinceLastHaptic = now;
-            const amplitude = Math.floor(
-              normalizedDistanceFromStep *
-                HAPTIC_RANGE_FOR_APPROACHING_GENTLE_CONTACT.max
-            );
-            metaframe.setOutput("h", {
-              pattern: [0, feedbackHapticDuration],
-              amplitude: [0, amplitude],
-            });
-            // metaframe.setOutput("distance-to-step", distanceFromStep);
-          }
         }
-      })
-    );
+      }
+    });
+    disposers.push(() => deviceIO.userOrientation.detach(bindingOrientation));
+
+
+
+
+
+
+
+    // disposers.push(
+    //   metaframe.onInput("o", (orientation: EulerArray) => {
+    //     let yaw: number | undefined;
+    //     let roll: number | undefined;
+    //     if (quaternionBaseline) {
+    //       const rotated = rotateEulerFromBaselineQuaternion(
+    //         orientation,
+    //         quaternionBaseline
+    //       );
+    //       yaw = rotated.yaw;
+    //       roll = rotated.roll;
+    //     } else {
+    //       yaw = orientation[0];
+    //       roll = orientation[2];
+    //     }
+
+
+    //     rollNormalized.current = roll;
+    //     // yaw = Math.max(Math.min(roll, 1.0), -1.0);
+    //     rollNormalized.current = (roll - -0) / -0.3;
+    //     rollNormalized.current = Math.max(Math.min(rollNormalized.current, 1.0), -1.0);
+    //     // rollNormalized.current = 1 - rollNormalized.current;
+
+    //     // let's use yaw as the force
+    //     // rotated values [ -1, 1] approx, it's like just under half a circle
+    //     yaw = Math.max(Math.min(yaw, 1.0), -1.0);
+    //     yawNormalized.current = (yaw - -1) / 2;
+    //     yawNormalized.current = 1 - yawNormalized.current;
+    //     // for rendering
+    //     // yawNormalized.current = yawNormalized;
+    //     const now = Date.now();
+
+    //     const index = stepValues.findIndex((v) => yawNormalized.current < v);
+    //     setStepState(index);
+    //     stepRef.current = index;
+
+    //     if (index >= 0 && index < steps && index !== currentStep) {
+    //       currentStep = index;
+    //       metaframe.setOutput("index", currentStep + 1);
+    //       metaframe.setOutput("h", {
+    //         pattern: [0, newStepHapticDuration],
+    //         amplitude: [0, 255],
+    //       });
+    //       // timeSinceLastStep = now + 1000;
+    //       timeSinceLastStep = now;
+    //       timeSinceLastHaptic = now;
+    //     } else {
+    //       // feedback haptic
+    //       const distanceFromStep = stepValuesForDistanceCompute.reduce(
+    //         (acc: number, current: number) => {
+    //           return Math.min(Math.abs(current - yawNormalized.current), acc);
+    //         },
+    //         1.0
+    //       );
+
+    //       // Math.min(Math.abs(yawNormalized - stepValues[currentStep]), currentStep > 0 ? Math.abs(yawNormalized - stepValues[currentStep]) : 0);
+    //       // metaframe.setOutput("distance-to-step", distanceFromStep);
+    //       const normalizedDistanceFromStep = distanceFromStep / stepInterval;
+    //       distanceFromStepNormalized.current = normalizedDistanceFromStep;
+    //       if (
+    //         now - timeSinceLastHaptic > feedbackHapticDuration &&
+    //         now - timeSinceLastStep > newStepHapticDuration &&
+    //         normalizedDistanceFromStep < 0.2
+    //       ) {
+    //         // const normalizedDistanceFromStep = (stepInterval - distanceFromStep) / stepInterval;
+
+    //         metaframe.setOutput(
+    //           "distance-to-step-normalized",
+    //           normalizedDistanceFromStep
+    //         );
+    //         timeSinceLastHaptic = now;
+    //         const amplitude = Math.floor(
+    //           normalizedDistanceFromStep *
+    //             HAPTIC_RANGE_FOR_APPROACHING_GENTLE_CONTACT.max
+    //         );
+    //         metaframe.setOutput("h", {
+    //           pattern: [0, feedbackHapticDuration],
+    //           amplitude: [0, amplitude],
+    //         });
+    //         // metaframe.setOutput("distance-to-step", distanceFromStep);
+    //       }
+    //     }
+      // })
+    // );
 
     return () => {
       while (disposers.length > 0) {
@@ -236,7 +337,7 @@ export const RotarySwitchNoPhysics: React.FC<{
       }
     };
   }, [
-    metaframeObject?.metaframe,
+    deviceIO,
     steps,
     startStep,
     yawNormalized,

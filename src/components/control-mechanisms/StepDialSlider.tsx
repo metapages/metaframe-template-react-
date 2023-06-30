@@ -4,12 +4,14 @@ import {
   useState,
 } from 'react';
 
+import { useStore } from '/@/store';
 import Matter from 'matter-js';
 import { fromEuler } from 'quaternion';
 
-import { useMetaframe } from '@metapages/metaframe-hook';
-
-import { yawFromQuaternion } from '../common';
+import {
+  EulerArray,
+  yawFromQuaternion,
+} from '../common';
 import {
   HAPTIC_RANGE_FOR_APPROACHING_GENTLE_CONTACT,
 } from './haptics/haptics-common';
@@ -30,14 +32,16 @@ export const StepDialSlider: React.FC<{
 }> = ({ setStep, steps = 5, startStep = 0 }) => {
   const forceRef = useRef<number>(0);
   const [body, setBody] = useState<Matter.Body | null>(null);
-  const metaframeObject = useMetaframe();
+  const deviceIO = useStore(
+    (state) => state.deviceIO
+  );
 
   // The core code
   useEffect(() => {
-    if (!ref.current || !metaframeObject?.metaframe) {
+    if (!ref.current || !deviceIO) {
       return;
     }
-    const { metaframe } = metaframeObject;
+
     ref.current.innerHTML = "";
 
     // 📐📐📐📐📐📐📐📐📐📐📐📐📐
@@ -102,7 +106,7 @@ export const StepDialSlider: React.FC<{
 
     // const selections = 6;
     let step = startStep;
-    metaframe.setOutput("position", step);
+    console.log(`metaframe.setOutput("position", step);`)
     // const selection = 0;
     const friction = 0.5;
 
@@ -420,10 +424,11 @@ export const StepDialSlider: React.FC<{
           if (index !== step) {
             step = index;
             // setStep(step);
-            metaframe.setOutput("position", index);
+            console.log(`metaframe.setOutput("position", index);`)
+            // metaframe.setOutput("position", index);
             timeSinceLastStep = now + 1000;
             timeSinceLastHaptic = now;
-            metaframe.setOutput("h", {
+            deviceIO.haptics.dispatch({
               pattern: [0, newStepHapticDuration],
               intensities: [0, 255],
             });
@@ -445,8 +450,7 @@ export const StepDialSlider: React.FC<{
         );
         // console.log('amplitude', amplitude)
         timeSinceLastHaptic = now;
-        // metaframe.setOutput("h", {duration: feedbackHapticDuration, amplitude });
-        metaframe.setOutput("h", {
+        deviceIO.haptics.dispatch({
           pattern: [0, 10],
           intensities: [0, amplitude],
         });
@@ -520,11 +524,11 @@ export const StepDialSlider: React.FC<{
       setBody(null);
       // clearInterval(checkToothHeight);
     };
-  }, [setBody, forceRef, metaframeObject?.metaframe, setStep, steps, startStep]);
+  }, [setBody, forceRef, deviceIO, setStep, steps, startStep]);
 
   useEffect(() => {
-    const metaframe = metaframeObject.metaframe;
-    if (!metaframe || !body) {
+    // const metaframe = metaframeObject.metaframe;
+    if (!deviceIO || !body) {
       return;
     }
     const disposers: (() => void)[] = [];
@@ -539,39 +543,44 @@ export const StepDialSlider: React.FC<{
     const hapticInterval = 100;
     let timeLastHaptic = Date.now();
 
-    disposers.push(
-      metaframe.onInput("o", (orientation: number[]) => {
-        var q = fromEuler(
-          orientation[0] * rad,
-          orientation[1] * rad,
-          orientation[2] * rad,
-          "ZXY"
-        );
-        // this returns values from [-0.02, 0.02]
-        let yaw = yawFromQuaternion(q);
-        // console.log('yaw', yaw);
-        yaw = Math.max(Math.min(yaw, 0.028), -0.028);
-        const forceNormalized = (yaw - -0.028) / (0.028 - -0.028);
-        metaframe.setOutput("force", forceNormalized);
-        const forceNormalizedNegative1ToPositive1 = forceNormalized * 2 - 1;
-        forceRef.current = forceNormalizedNegative1ToPositive1;
+    const bindingOrientation = deviceIO.userOrientation.add((orientation: EulerArray) => {
+      var q = fromEuler(
+        orientation[0] * rad,
+        orientation[1] * rad,
+        orientation[2] * rad,
+        "ZXY"
+      );
+      // this returns values from [-0.02, 0.02]
+      let yaw = yawFromQuaternion(q);
+      // console.log('yaw', yaw);
+      yaw = Math.max(Math.min(yaw, 0.028), -0.028);
+      const forceNormalized = (yaw - -0.028) / (0.028 - -0.028);
+      console.log(`metaframe.setOutput("force", forceNormalized)`);
+      const forceNormalizedNegative1ToPositive1 = forceNormalized * 2 - 1;
+      forceRef.current = forceNormalizedNegative1ToPositive1;
 
-        // const now = Date.now();
-        // const absForceNormalizedNegative1ToPositive1 = Math.abs(forceNormalizedNegative1ToPositive1);
-        // console.log('absForceNormalizedNegative1ToPositive1', absForceNormalizedNegative1ToPositive1);
-        // if (absForceNormalizedNegative1ToPositive1 > 0.3 && now - timeLastHaptic > hapticInterval) {
-        //   const amplitude = Math.floor((absForceNormalizedNegative1ToPositive1 - 0.3) * 255);
-        //   console.log('amplitude', amplitude);
-        //   metaframe.setOutput("h", {duration: hapticInterval, amplitude });
-        //   // metaframe.setOutput("h", {duration: hapticInterval, amplitude });
-        //   // metaframe.setOutput("hg", {medium: true});
-        //   timeLastHaptic = now;
-        // }
+      // const now = Date.now();
+      // const absForceNormalizedNegative1ToPositive1 = Math.abs(forceNormalizedNegative1ToPositive1);
+      // console.log('absForceNormalizedNegative1ToPositive1', absForceNormalizedNegative1ToPositive1);
+      // if (absForceNormalizedNegative1ToPositive1 > 0.3 && now - timeLastHaptic > hapticInterval) {
+      //   const amplitude = Math.floor((absForceNormalizedNegative1ToPositive1 - 0.3) * 255);
+      //   console.log('amplitude', amplitude);
+      //   metaframe.setOutput("h", {duration: hapticInterval, amplitude });
+      //   // metaframe.setOutput("h", {duration: hapticInterval, amplitude });
+      //   // metaframe.setOutput("hg", {medium: true});
+      //   timeLastHaptic = now;
+      // }
 
-        // console.log('forceNormalized', forceNormalized);
-        // console.log('o-yaw', yaw);
-      })
-    );
+      // console.log('forceNormalized', forceNormalized);
+      // console.log('o-yaw', yaw);
+    });
+    disposers.push(() => deviceIO.userOrientation.detach(bindingOrientation));
+
+    // disposers.push(
+    //   metaframe.onInput("o", (orientation: number[]) => {
+
+    //   })
+    // );
 
     // disposers.push(metaframe.onInput("oa", (orientation: number[]) => {
     //   var q = fromEuler(orientation[0] * rad, orientation[1] * rad, orientation[2] * rad, 'ZXY');
@@ -584,7 +593,7 @@ export const StepDialSlider: React.FC<{
         disposers.pop()?.();
       }
     };
-  }, [metaframeObject?.metaframe]);
+  }, [deviceIO]);
 
   const ref = useRef<HTMLDivElement>(null);
 

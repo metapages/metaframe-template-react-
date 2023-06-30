@@ -13,6 +13,7 @@ import {
 } from '@chakra-ui/react';
 import { useHashParamJson } from '@metapages/hash-query';
 
+import { ChannelField } from './ChannelField';
 import { RadioButtonMode } from './RadioButtonMode';
 
 export type Options = {
@@ -72,6 +73,7 @@ export const PanelOptions: React.FC = () => {
 
   return (
     <>
+      <ChannelField />
       <RadioButtonMode />
       <br />
       <form onSubmit={formik.handleSubmit}>

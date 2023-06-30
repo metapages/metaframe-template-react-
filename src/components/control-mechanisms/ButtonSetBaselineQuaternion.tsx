@@ -9,7 +9,7 @@ import Quaternion from 'quaternion';
 import { Button } from '@chakra-ui/react';
 import { useMetaframe } from '@metapages/metaframe-hook';
 
-import { useStore } from '../store';
+import { useStore } from '../../store';
 
 const rad = Math.PI / 180;
 

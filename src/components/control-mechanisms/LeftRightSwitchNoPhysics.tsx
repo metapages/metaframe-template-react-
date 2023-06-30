@@ -4,11 +4,12 @@ import {
   useRef,
 } from 'react';
 
+import { useStore } from '/@/store';
+
 import {
   Box,
   VStack,
 } from '@chakra-ui/react';
-import { useMetaframe } from '@metapages/metaframe-hook';
 
 import {
   clamp,
@@ -19,6 +20,7 @@ import {
 import { CanvasElement } from '../generic/CanvasElement';
 import { useZeroOrientationFromBuffer } from '../hand-os/Filters';
 import { AccelerometerButtons } from './AccelerometerButtons';
+import { Haptic } from './haptics/haptics-common';
 import { UseBaselineFromBuffer } from './UseBaselineFromBuffer';
 
 const HAPTIC_RANGE_FOR_APPROACHING_GENTLE_CONTACT = { min: 1, max: 130 };
@@ -62,25 +64,27 @@ export const LeftRightSwitchNoPhysics: React.FC<{
   // const quaternionBaseline = useStore((state) => state.quaternionBaseline);
   const yawNormalized = useRef<number>(0.5);
   const accelerationZ = useRef<number>(0);
-  const metaframeObject = useMetaframe();
+
+  const deviceIO = useStore(
+    (state) => state.deviceIO
+  );
 
   useEffect(() => {
-    const metaframe = metaframeObject.metaframe;
-    if (!metaframe) {
+    // const metaframe = metaframeObject.metaframe;
+    if (!deviceIO) {
       return;
     }
 
     let timeUntilMotionHapticFinished = 0;
     let timeUntilIncrementHapticFinished = 0;
 
-    const sendHaptic = (haptic: {
-      pattern: number[];
-      intensities: number[];
-    }) => {
-      metaframe.setOutput("h", haptic);
+    const sendHaptic = (haptic: Haptic) => {
+      deviceIO.haptics.dispatch(haptic);
+      // metaframe.setOutput("h", haptic);
     };
     const cancelHaptic = () => {
-      metaframe.setOutput("h", { cancel: true });
+      deviceIO.haptics.dispatch({ cancel: true });
+      // metaframe.setOutput("h", { cancel: true });
     };
 
     // const hapticMotionFeedback = (now: number) => {
@@ -197,11 +201,11 @@ export const LeftRightSwitchNoPhysics: React.FC<{
       // }
     }, 1000 / 30);
     return () => clearInterval(interval);
-  }, [metaframeObject]);
+  }, [deviceIO]);
 
   useEffect(() => {
-    const metaframe = metaframeObject.metaframe;
-    if (!metaframe) {
+    // const metaframe = metaframeObject.metaframe;
+    if (!deviceIO) {
       return;
     }
     const disposers: (() => void)[] = [];
@@ -225,88 +229,162 @@ export const LeftRightSwitchNoPhysics: React.FC<{
     const tolerance = 0.2;
     const processOrientation = useZeroOrientationFromBuffer({bufferSize:30, tolerance});
 
-    disposers.push(
-      metaframe.onInput("ua", (acceleration: EulerArray) => {
-        // const filteredAcceleration = accFilter(acceleration);
-        // console.log('acceleration', acceleration);
-        accelerationZ.current = Math.max(...acceleration);
-        // console.log('accelerationZ.current', accelerationZ.current);
-      }),
-      metaframe.onInput("ao", (rawOrientation: EulerArray) => {
-        let { orientation } = processOrientation(rawOrientation);
-        let yaw: number  = orientation[0];
-        // console.log(`rawOrientation[0]=${rawOrientation[0]} orientation[0]=${orientation[0]}`)
-        let roll: number = orientation[1];
-        // let yaw: number | undefined;
-        // let roll: number | undefined;
-        // if (quaternionBaseline) {
-        //   const rotated = rotateEulerFromBaselineQuaternion(
-        //     orientation,
-        //     quaternionBaseline
-        //   );
-        //   yaw = rotated.yaw;
-        //   // roll = rotated.roll;
-        //   roll = rotated.pitch;
+    const bindingAccelerometer = deviceIO.userAccelerometer.add((acceleration: EulerArray) => {
+      accelerationZ.current = Math.max(...acceleration);
+    });
+    disposers.push(() => deviceIO.userAccelerometer.detach(bindingAccelerometer));
 
-        //   // initialOrientationForHandRotateSelect = roll;
-        // } else {
-        //   yaw = orientation[0];
-        //   // roll = orientation[2];
-        //   roll = orientation[1];
-        //   // initialOrientationForHandRotateSelect = roll;
-        // }
+    const bindingOrientation = deviceIO.userOrientation.add((rawOrientation: EulerArray) => {
+      let { orientation } = processOrientation(rawOrientation);
+      let yaw: number  = orientation[0];
+      // console.log(`rawOrientation[0]=${rawOrientation[0]} orientation[0]=${orientation[0]}`)
+      let roll: number = orientation[1];
+      // let yaw: number | undefined;
+      // let roll: number | undefined;
+      // if (quaternionBaseline) {
+      //   const rotated = rotateEulerFromBaselineQuaternion(
+      //     orientation,
+      //     quaternionBaseline
+      //   );
+      //   yaw = rotated.yaw;
+      //   // roll = rotated.roll;
+      //   roll = rotated.pitch;
 
-        if (roll < 0) {
-          roll = Tau + roll;
-        }
-        if (roll > Math.PI * 2) {
-          roll = roll - Tau;
-        }
-        // console.log('roll', roll);
+      //   // initialOrientationForHandRotateSelect = roll;
+      // } else {
+      //   yaw = orientation[0];
+      //   // roll = orientation[2];
+      //   roll = orientation[1];
+      //   // initialOrientationForHandRotateSelect = roll;
+      // }
 
-        if (!initialOrientationForHandRotateSelect) {
-          initialOrientationForHandRotateSelect = roll;
-        }
+      if (roll < 0) {
+        roll = Tau + roll;
+      }
+      if (roll > Math.PI * 2) {
+        roll = roll - Tau;
+      }
+      // console.log('roll', roll);
 
-        const rollDelta = getAbsoluteDifferenceAngles(
-          roll,
-          initialOrientationForHandRotateSelect
-        );
+      if (!initialOrientationForHandRotateSelect) {
+        initialOrientationForHandRotateSelect = roll;
+      }
 
-        // ((roll <= Math.PI ? roll + Tau : roll) - initialOrientationForHandRotateSelect + Tau);
-        // console.log(`init=${initialOrientationForHandRotateSelect} roll=${roll} delta=${rollDelta}`);
-        // if (rollDelta > 1.2) {
-        //   setStep(stepRef.current);
-        //   setActuallySelectedStep(stepRef.current);
-        // }
+      const rollDelta = getAbsoluteDifferenceAngles(
+        roll,
+        initialOrientationForHandRotateSelect
+      );
 
-        // // rollNormalized.current = (roll + (Math.PI / 2) ) / Math.PI;
-        // rollNormalized.current = (roll  ) / (Math.PI * 2);
-        // rollNormalized.current = roll;
-        // // yaw = Math.max(Math.min(roll, 1.0), -1.0);
-        // rollNormalized.current = (roll - -0) / -0.3;
-        // rollNormalized.current = Math.max(
-        //   Math.min(rollNormalized.current, 1.0),
-        //   -1.0
-        // );
-        // rollNormalized.current = 1 - rollNormalized.current;
+      // ((roll <= Math.PI ? roll + Tau : roll) - initialOrientationForHandRotateSelect + Tau);
+      // console.log(`init=${initialOrientationForHandRotateSelect} roll=${roll} delta=${rollDelta}`);
+      // if (rollDelta > 1.2) {
+      //   setStep(stepRef.current);
+      //   setActuallySelectedStep(stepRef.current);
+      // }
 
-        // let's use yaw as the force
-        // rotated values [ -1, 1] approx, it's like just under half a circle
-        // yaw = Math.max(Math.min(yaw, 0.028), -0.028);
-        // const forceNormalized = (yaw - -0.028) / (0.028 - -0.028);
-        yaw = Math.max(Math.min(yaw, 1), -1);
-        yawNormalized.current = 1- (yaw + 1) / 2;
-        // yawNormalized.current = 1 - yawNormalized.current;
-      })
-    );
+      // // rollNormalized.current = (roll + (Math.PI / 2) ) / Math.PI;
+      // rollNormalized.current = (roll  ) / (Math.PI * 2);
+      // rollNormalized.current = roll;
+      // // yaw = Math.max(Math.min(roll, 1.0), -1.0);
+      // rollNormalized.current = (roll - -0) / -0.3;
+      // rollNormalized.current = Math.max(
+      //   Math.min(rollNormalized.current, 1.0),
+      //   -1.0
+      // );
+      // rollNormalized.current = 1 - rollNormalized.current;
+
+      // let's use yaw as the force
+      // rotated values [ -1, 1] approx, it's like just under half a circle
+      // yaw = Math.max(Math.min(yaw, 0.028), -0.028);
+      // const forceNormalized = (yaw - -0.028) / (0.028 - -0.028);
+      yaw = Math.max(Math.min(yaw, 1), -1);
+      yawNormalized.current = 1- (yaw + 1) / 2;
+      // yawNormalized.current = 1 - yawNormalized.current;
+    });
+    disposers.push(() => deviceIO.userOrientation.detach(bindingOrientation));
+
+    // disposers.push(
+    //   metaframe.onInput("ua", (acceleration: EulerArray) => {
+    //     // const filteredAcceleration = accFilter(acceleration);
+    //     // console.log('acceleration', acceleration);
+    //     accelerationZ.current = Math.max(...acceleration);
+    //     // console.log('accelerationZ.current', accelerationZ.current);
+    //   }),
+    //   metaframe.onInput("ao", (rawOrientation: EulerArray) => {
+    //     let { orientation } = processOrientation(rawOrientation);
+    //     let yaw: number  = orientation[0];
+    //     // console.log(`rawOrientation[0]=${rawOrientation[0]} orientation[0]=${orientation[0]}`)
+    //     let roll: number = orientation[1];
+    //     // let yaw: number | undefined;
+    //     // let roll: number | undefined;
+    //     // if (quaternionBaseline) {
+    //     //   const rotated = rotateEulerFromBaselineQuaternion(
+    //     //     orientation,
+    //     //     quaternionBaseline
+    //     //   );
+    //     //   yaw = rotated.yaw;
+    //     //   // roll = rotated.roll;
+    //     //   roll = rotated.pitch;
+
+    //     //   // initialOrientationForHandRotateSelect = roll;
+    //     // } else {
+    //     //   yaw = orientation[0];
+    //     //   // roll = orientation[2];
+    //     //   roll = orientation[1];
+    //     //   // initialOrientationForHandRotateSelect = roll;
+    //     // }
+
+    //     if (roll < 0) {
+    //       roll = Tau + roll;
+    //     }
+    //     if (roll > Math.PI * 2) {
+    //       roll = roll - Tau;
+    //     }
+    //     // console.log('roll', roll);
+
+    //     if (!initialOrientationForHandRotateSelect) {
+    //       initialOrientationForHandRotateSelect = roll;
+    //     }
+
+    //     const rollDelta = getAbsoluteDifferenceAngles(
+    //       roll,
+    //       initialOrientationForHandRotateSelect
+    //     );
+
+    //     // ((roll <= Math.PI ? roll + Tau : roll) - initialOrientationForHandRotateSelect + Tau);
+    //     // console.log(`init=${initialOrientationForHandRotateSelect} roll=${roll} delta=${rollDelta}`);
+    //     // if (rollDelta > 1.2) {
+    //     //   setStep(stepRef.current);
+    //     //   setActuallySelectedStep(stepRef.current);
+    //     // }
+
+    //     // // rollNormalized.current = (roll + (Math.PI / 2) ) / Math.PI;
+    //     // rollNormalized.current = (roll  ) / (Math.PI * 2);
+    //     // rollNormalized.current = roll;
+    //     // // yaw = Math.max(Math.min(roll, 1.0), -1.0);
+    //     // rollNormalized.current = (roll - -0) / -0.3;
+    //     // rollNormalized.current = Math.max(
+    //     //   Math.min(rollNormalized.current, 1.0),
+    //     //   -1.0
+    //     // );
+    //     // rollNormalized.current = 1 - rollNormalized.current;
+
+    //     // let's use yaw as the force
+    //     // rotated values [ -1, 1] approx, it's like just under half a circle
+    //     // yaw = Math.max(Math.min(yaw, 0.028), -0.028);
+    //     // const forceNormalized = (yaw - -0.028) / (0.028 - -0.028);
+    //     yaw = Math.max(Math.min(yaw, 1), -1);
+    //     yawNormalized.current = 1- (yaw + 1) / 2;
+    //     // yawNormalized.current = 1 - yawNormalized.current;
+    //   })
+    // );
 
     return () => {
       while (disposers.length > 0) {
         disposers.pop()?.();
       }
     };
-  }, [metaframeObject?.metaframe, yawNormalized]);
+  }, [deviceIO, yawNormalized]);
 
   const renderYawValue = useCallback(
     (ctx: CanvasRenderingContext2D) => {

@@ -46,7 +46,6 @@ export interface Menu {
 
 export type MenuItemActionType = "menu" | "url" | "metapage";
 export const MenuItemTypes: Record<MenuItemActionType, MenuItemActionType> = {
-  // menuImmediate: "menuImmediate",
   menu: "menu",
   url: "url",
   metapage: "metapage",
@@ -77,7 +76,43 @@ export interface MenuModelCursor {
   item?: MenuItemDefinition;
   // Some MenuItems, e.g. metapages, can ingest motion streams and "lock"
   // the cursor to the MenuItem, until released
-  isMenuItemControlled: boolean;
+  // isMenuItemControlled: boolean;
+  previous?: MenuModelCursor;
+}
+
+export interface MenuConfig {
+  menus: Menu[];
+  menuItems: MenuItemDefinition[];
+}
+
+/**
+ * Make sure that the motion capture router is pointing to the correct channel
+ * @param metapage
+ */
+const ensureMetapageHasRouterKey = (metapage: MetapageDefinitionV3, key:string ) => {
+  if (metapage.metaframes) {
+    Object.keys(metapage.metaframes).forEach((metaframeKey) => {
+      const metaframe = metapage.metaframes[metaframeKey];
+      if (metaframe.url.includes("https://superslides-router.glitch.me")) {
+        const url = new URL(metaframe.url);
+        url.pathname = `/${key}`;
+        metaframe.url = url.href;
+      }
+    });
+  }
+}
+
+const processAllMenuItems = (menuItems: MenuItemDefinition[], channelKey:string) : MenuItemDefinition[] => {
+  return menuItems.map((menuItem) => {
+    if (menuItem.type === MenuItemTypes.metapage) {
+      const menuItemCopy : MenuItemDefinition =  { ...menuItem };
+      const metapageThing = {...(menuItemCopy.value as MenuItemActionMetapage)};
+      menuItemCopy.value = metapageThing;
+      ensureMetapageHasRouterKey(metapageThing.metapage, channelKey);
+      return menuItemCopy;
+    }
+    return menuItem;
+  });
 }
 
 export class MenuModel {
@@ -87,19 +122,27 @@ export class MenuModel {
   menuItems: Record<MenuItemId, MenuItemDefinition> = {};
   menuHistory: Menu[];
 
-  constructor(menus: Menu[], menuItems: MenuItemDefinition[] = []) {
-    this.root = menus[0];
+  constructor(config: MenuConfig, channel: string) {
+    if (config.menus.length === 0) {
+      throw `MenuConfig must have at least one Menu!`
+    }
+    if (!channel) {
+      throw `MenuConfig have a channel!`
+    }
+    this.root = config.menus[0];
     this.current = this.root;
-    this.menuHistory = [menus[0]];
+    this.menuHistory = [];
+    let localMenuItems = config.menuItems || [];
+    localMenuItems = processAllMenuItems(localMenuItems, channel);
 
     // process all the Menus and MenuItems
-    menus.forEach((menu) => {
+    config.menus.forEach((menu) => {
       if (this.menus[menu.id]) {
         throw `Menu with id ${menu.id} already exists!`;
       }
       this.menus[menu.id] = menu;
     });
-    menuItems.forEach((item) => {
+    localMenuItems.forEach((item) => {
       if (this.menuItems[item.id]) {
         throw `MenuItem with id ${item.id} already exists!`;
       }
@@ -133,9 +176,7 @@ export class MenuModel {
     if (!menu) {
       return this.cursor;
     }
-    if (this.menuHistory[this.menuHistory.length - 1] !== menu) {
-      this.menuHistory.push(menu);
-    }
+
     this.current = menu;
     const menuType: MenuType = menu.type || MenuTypes.Default;
 
@@ -245,66 +286,92 @@ export class MenuModel {
   }
 
   onMenuLeft(): MenuModelCursor {
+    const previous = this.cursor;
     const currentMenu = this.current;
     const currentMenuIndex = currentMenu.state.selectedIndex;
     if (currentMenuIndex <= 0) {
-      return this.setMenuItemSelection(currentMenu.state.selectedIndex);
+      return {
+        ...previous,
+        previous: undefined,
+      };
     }
     const newMenuitemIndex = currentMenuIndex - 1;
-    return this.setMenuItemSelection(newMenuitemIndex);
+    return {
+      ...this.setMenuItemSelection(newMenuitemIndex),
+      previous,
+    };
   }
 
   onMenuRight(): MenuModelCursor {
+    const previous = this.cursor;
     const currentMenu = this.current;
     const currentMenuIndex = currentMenu.state.selectedIndex;
     if (currentMenuIndex >= currentMenu.items.length - 1) {
-      return this.setMenuItemSelection(currentMenu.state.selectedIndex);
+      return {
+        ...previous,
+        previous: undefined,
+      };
     }
     const newMenuitemIndex = currentMenuIndex + 1;
-    return this.setMenuItemSelection(newMenuitemIndex);
+    return {
+      ...this.setMenuItemSelection(newMenuitemIndex),
+      previous,
+    };
   }
 
   onMenuForward(): MenuModelCursor {
+    const previous = this.cursor;
     const menuItem = this.getMenuItemSelected();
     if (!menuItem) {
-      return this.cursor;
+      console.log("❗ onMenuForward this.getMenuItemSelected() is undefined");
+      return previous;
     }
     switch (menuItem.type) {
       case MenuItemTypes.menu:
-        const payloadUrl = menuItem.value as MenuItemActionMenu;
-        const newMenuId = payloadUrl.menu;
-        return this.setMenu(newMenuId);
+        const payloadMenu = menuItem.value as MenuItemActionMenu;
+        const newMenuId = payloadMenu.menu;
+        const newMenu = this.menus[newMenuId];
+        if (newMenu === previous.menu) {
+          console.log("❗ onMenuForward new menu is the same as the current");
+          return previous;
+        }
+        this.menuHistory.push(previous.menu);
+        return {
+          ...this.setMenu(newMenuId),
+          previous,
+        };
       default:
         console.log(
-          `MenuModel Unhandled: onMenuFoward where menuItem.type=${menuItem.type}`
+          `❗ MenuModel Unhandled: onMenuFoward where menuItem.type=${menuItem.type}`
         );
-        return this.cursor;
+        return previous;
     }
   }
 
   onMenuBack(): MenuModelCursor {
+    const previous = this.cursor;
     if (
-      this.menuHistory.length > 1 &&
-      this.current !== this.menuHistory[this.menuHistory.length - 1]
+      this.menuHistory.length > 0
     ) {
       const previousMenu = this.menuHistory.pop()!;
-      this.current = previousMenu;
-      // if you go back, you might end up on a MenuItem that immediately takes you to that Menu again,
-      // so go back until that is not the case
+      return {
+        ...this.setMenu(previousMenu.id),
+        previous,
+      };
     }
-    return this.cursor;
+    return previous;
   }
 
   public get cursor(): MenuModelCursor {
     return {
       menu: this.current,
       item: this.getMenuItemSelected(),
-      isMenuItemControlled: false,
     };
   }
 
   reset(): MenuModelCursor {
     this.current = this.root;
+    this.menuHistory = [];
     return this.cursor;
   }
 }

@@ -4,9 +4,8 @@ import {
   useState,
 } from 'react';
 
+import { useStore } from '/@/store';
 import Matter from 'matter-js';
-
-import { useMetaframe } from '@metapages/metaframe-hook';
 
 /**
  * Step dial
@@ -228,26 +227,30 @@ export const StepDialRotary: React.FC = () => {
   }, []);
 
   const [body, setBody] = useState<Matter.Body | null>(null);
-  const metaframeObject = useMetaframe();
+  const deviceIO = useStore(
+    (state) => state.deviceIO
+  );
+  // const metaframeObject = useMetaframe();
   useEffect(() => {
-    const metaframe = metaframeObject.metaframe;
-    if (!metaframe || !body) {
+
+    if (!deviceIO || !body) {
       return;
     }
-    const disposer = metaframe.onInput("input-rotation", (value:number) => {
-      console.log('value', value);
-      Matter.Body.applyForce(body, {x: body.position.x, y: body.position.y-10}, {x: -0.1 * value, y: 0});
-      // const { x, y } = metaframeObject;
-      // Body.setPosition(body, { x, y });
-    });
+    // ❗❗❗❗❗❗❗❗ commented out but this is where the action happens
+    // const disposer = metaframe.onInput("input-rotation", (value:number) => {
+    //   console.log('value', value);
+    //   Matter.Body.applyForce(body, {x: body.position.x, y: body.position.y-10}, {x: -0.1 * value, y: 0});
+    //   // const { x, y } = metaframeObject;
+    //   // Body.setPosition(body, { x, y });
+    // });
 
 
 
     return () => {
-      disposer();
+      // disposer();
     }
 
-  }, [metaframeObject?.metaframe, body]);
+  }, [deviceIO, body]);
 
   const ref = useRef<HTMLDivElement>(null);
 
