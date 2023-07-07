@@ -19,10 +19,11 @@ const differenceOrientations = (o1: EulerArray, o2: EulerArray) => {
 
 // If you pause for a second, the baseline orientation will
 // be the average of the last 30 orientations
-export const useZeroOrientationFromBuffer = (args: {
+export const useZeroOrientationFromBufferAutoMatically = (args: {
   bufferSize: number;
   // mean: how much to consider "not moving"
-  // holding it still is 0.12-0.13
+  // Is is the mean (absolute) difference between euler orientations
+  // holding it still is 0.01-0.02
   tolerance?: number;
   // if you reset the baseline, wait this long before
   // checking again, otherwise small pauses cause a reset
@@ -31,9 +32,11 @@ export const useZeroOrientationFromBuffer = (args: {
 }) => {
   const {
     bufferSize,
-    tolerance = 0.14,
-    timeDelayRecheckBaselineAfterSetting = 1500,
+    // 0.03 is generous actually
+    tolerance = 0.03,
+    timeDelayRecheckBaselineAfterSetting = 500,
   } = args;
+  // console.log('tolerance', tolerance);
   const orientationBuffer: EulerArray[] = [...Array(bufferSize)].map((_) => [
     0, 0, 0,
   ]);
@@ -77,6 +80,7 @@ export const useZeroOrientationFromBuffer = (args: {
     processOrientationStream(orientation);
 
     if (!isTakingAPauseAfterMovingEnough) {
+      // console.log(`tolerance=${tolerance} meanOrientationBufferDifferences`, meanOrientationBufferDifferences);
       if (meanOrientationBufferDifferences < tolerance) {
         // then use the current as the baseline
         var q = Quaternion.fromEuler(
@@ -98,6 +102,108 @@ export const useZeroOrientationFromBuffer = (args: {
           }, timeDelayRecheckBaselineAfterSetting);
         }
       }
+    }
+
+    if (baselineQuaternion) {
+      const rotated = rotateEulerFromBaselineQuaternion(
+        orientation,
+        baselineQuaternion
+      );
+      // orientation = [rotated.pitch, rotated.roll, rotated.yaw];
+      // this is the order that the phone sends for user orientation
+      orientation = [rotated.yaw, rotated.pitch, rotated.roll];
+    }
+
+    return {
+      meanOrientationBufferDifferences,
+      overallMax,
+      orientation,
+      newBaselineQuaternion: setBaselineQuaternion,
+      takingABreak: isTakingAPauseAfterMovingEnough,
+    };
+  };
+};
+
+
+
+// If you pause for a second, the baseline orientation will
+// be the average of the last 30 orientations
+export const useZeroOrientationFromBufferAfterADelay = (args: {
+  bufferSize: number;
+  // mean: how much to consider "not moving"
+  // Is is the mean (absolute) difference between euler orientations
+  // holding it still is 0.01-0.02
+  tolerance?: number;
+  // after this delay, the baseline will not be altered
+  intervalAllowedForSettingBaseline?: number;
+}) => {
+  const {
+    bufferSize,
+    // 0.03 is generous actually
+    tolerance = 0.03,
+    intervalAllowedForSettingBaseline = 2000,
+  } = args;
+  const orientationBuffer: EulerArray[] = [...Array(bufferSize)].map((_) => [
+    0, 0, 0,
+  ]);
+  let orientationBufferIndex = 0;
+  let orientationBufferDifferences: number[] = [...Array(bufferSize)].map(
+    (_) => 0
+  );
+  let sumOrientationBufferDifferences = 0;
+  let meanOrientationBufferDifferences = 0;
+  let overallMax = 0;
+
+  const processOrientationStream = (o1: EulerArray) => {
+    orientationBuffer[orientationBufferIndex] = o1;
+    // the previous one
+    const o2 =
+      orientationBufferIndex === 0
+        ? orientationBuffer[bufferSize - 1]
+        : orientationBuffer[orientationBufferIndex - 1];
+    const diff = differenceOrientations(o1, o2);
+    const prevDifference = orientationBufferDifferences[orientationBufferIndex];
+    orientationBufferDifferences[orientationBufferIndex] = diff;
+    // this way we don't have to compute the entire thing every update
+    sumOrientationBufferDifferences += diff - prevDifference;
+    overallMax = Math.max(sumOrientationBufferDifferences, overallMax);
+    meanOrientationBufferDifferences =
+      sumOrientationBufferDifferences / bufferSize;
+    orientationBufferIndex++;
+    if (orientationBufferIndex === bufferSize) {
+      orientationBufferIndex = 0;
+    }
+  };
+
+  let baselineQuaternion: Quaternion | undefined;
+  let isTakingAPauseAfterMovingEnough = false;
+  let setBaselineQuaternion = false;
+
+  let allowedToSetBaseline = true;
+  setInterval(() => {
+    allowedToSetBaseline = false;
+  }, intervalAllowedForSettingBaseline);
+
+
+  return (orientation: EulerArray) => {
+    setBaselineQuaternion = false;
+    // console.log(`meanOrientationBufferDifferences=${meanOrientationBufferDifferences} tolerance=${tolerance} pause=${isTakingAPauseAfterMovingEnough}`);
+    processOrientationStream(orientation);
+
+    if (allowedToSetBaseline) {
+      // console.log(`tolerance=${tolerance} meanOrientationBufferDifferences`, meanOrientationBufferDifferences);
+      // if (meanOrientationBufferDifferences < tolerance) {
+        // then use the current as the baseline
+        var q = Quaternion.fromEuler(
+          orientation[0] * rad,
+          orientation[1] * rad,
+          orientation[2] * rad,
+          "ZXY"
+        );
+        baselineQuaternion = q;
+        setBaselineQuaternion = true;
+        // console.log(`🐸 new baselineQuaternion ${new Date().getTime()}`);
+      // }
     }
 
     if (baselineQuaternion) {

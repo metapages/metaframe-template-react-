@@ -83,7 +83,6 @@ export const HapticFeedbackTesting: React.FC = () => {
             deviceIO.haptics.dispatch(haptic);
           }
         }
-        console.log(`metaframe.setOutput("force", ${yawNormalized})`);
       }
     );
     disposers.push(() => deviceIO.userOrientation.detach(bindingOrientation));

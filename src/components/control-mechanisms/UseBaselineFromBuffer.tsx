@@ -13,14 +13,14 @@ import {
 
 import { EulerArray } from '../common';
 import { CanvasElement } from '../generic/CanvasElement';
-import { useZeroOrientationFromBuffer } from '../hand-os/Filters';
+import { useZeroOrientationFromBufferAutoMatically } from '../hand-os/Filters';
 
 /**
  * Get the baseline orientation from the buffer
  * Test with: https://app.metapage.io/dion/step-dial-iphone-v1/view?tab=0
  *
  */
-export const UseBaselineFromBuffer: React.FC = () => {
+export const UseBaselineFromBuffer: React.FC<{tolerance:number, bufferSize?:number}> = ({tolerance, bufferSize = 30}) => {
 
   const meanOrientationDifferences  = useRef<number>(0);
   const maxMeanOrientationDifferences  = useRef<number>(0);
@@ -38,9 +38,7 @@ export const UseBaselineFromBuffer: React.FC = () => {
       return;
     }
     const disposers: (() => void)[] = [];
-    const tolerance = 0.2;
-    const bufferSize = 30;
-    const processOrientation = useZeroOrientationFromBuffer({bufferSize, tolerance});
+    const processOrientation = useZeroOrientationFromBufferAutoMatically({bufferSize, tolerance});
 
     const bindingOrientation = deviceIO.userOrientation.add((orientation: EulerArray) => {
       const {meanOrientationBufferDifferences, overallMax, newBaselineQuaternion, takingABreak } = processOrientation(orientation);

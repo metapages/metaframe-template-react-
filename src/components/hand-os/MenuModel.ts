@@ -44,23 +44,25 @@ export interface Menu {
 //   id: string; // needed for this?
 // }
 
-export type MenuItemActionType = "menu" | "url" | "metapage";
+export type MenuItemActionType = "menu" | "url" | "metapage" | "notion";
 export const MenuItemTypes: Record<MenuItemActionType, MenuItemActionType> = {
   menu: "menu",
   url: "url",
   metapage: "metapage",
+  notion: "notion",
 };
 
 export type MenuItemActionMenu = { url?: string; menu: string };
 export type MenuItemActionUrl = { url: string };
 export type MenuItemActionMetapage = { metapage: MetapageDefinitionV3 };
+export type MenuItemActionNotion = { key: string, page:string };
 
 export interface MenuItemDefinition {
   id: MenuItemId;
   name?: string;
 
   type: MenuItemActionType;
-  value?: MenuItemActionMenu | MenuItemActionUrl | MenuItemActionMetapage;
+  value?: MenuItemActionMenu | MenuItemActionUrl | MenuItemActionMetapage | MenuItemActionNotion;
 
   // url: string;
   // wss: string;
@@ -237,6 +239,7 @@ export class MenuModel {
             if (payloadUrl.url && this.current.sendToSlideProjector) {
               fetch(this.current.sendToSlideProjector, {
                 method: "POST",
+                redirect: "follow",
                 headers: {
                   "Content-Type": "application/json",
                 },
@@ -248,12 +251,32 @@ export class MenuModel {
             }
 
             break;
+            case "notion":
+              const payloadNotion = menuItem.value as MenuItemActionNotion;
+  
+              if (this.current.sendToSlideProjector) {
+                fetch(this.current.sendToSlideProjector, {
+                  method: "POST",
+                  redirect: "follow",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    type: "notion",
+                    value: payloadNotion,
+                  }),
+                
+                });
+              }
+  
+              break;
           case "metapage":
             const payloadMetapage = menuItem.value as MenuItemActionMetapage;
             const metapageDef = payloadMetapage.metapage;
             if (this.current.sendToSlideProjector) {
               fetch(this.current.sendToSlideProjector, {
                 method: "POST",
+                redirect: "follow",
                 headers: {
                   "Content-Type": "application/json",
                 },

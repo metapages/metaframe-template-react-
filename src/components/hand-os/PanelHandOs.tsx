@@ -26,6 +26,7 @@ import {
   LeftHaptic,
   RightHaptic,
 } from '../control-mechanisms/haptics/HapticLibrary';
+import { SlidesProjectorUrl } from './constants';
 import {
   Menu,
   MenuItemActionMenu,
@@ -174,7 +175,7 @@ export const PanelHandOs: React.FC<{
     }
 
     if (menu.sendToSlideProjector) {
-      url = `https://slides-remote.glitch.me/#?channel=${new URL(
+      url = `${SlidesProjectorUrl}/#?channel=${new URL(
         menu.sendToSlideProjector
       ).pathname.replace("/", "")}`;
     }
@@ -209,10 +210,10 @@ export const PanelHandOs: React.FC<{
         {menu.sendToSlideProjector ? (
           <Link
             isExternal
-            href={`https://slides-remote.glitch.me/#?channel=${new URL(
+            href={`${SlidesProjectorUrl}/#?channel=${new URL(
               menu.sendToSlideProjector
             ).pathname.replace("/", "")}`}
-          >{`https://slides-remote.glitch.me/#?channel=${new URL(
+          >{`${SlidesProjectorUrl}/#?channel=${new URL(
             menu.sendToSlideProjector
           ).pathname.replace("/", "")}`}</Link>
         ) : null}

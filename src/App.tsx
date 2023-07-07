@@ -26,6 +26,9 @@ import {
   useHashParamInt,
 } from '@metapages/hash-query';
 
+import {
+  useMetaframeSignals,
+} from './components/communication/useMetaframeSignals';
 import { ButtonTabsToggle } from './components/options/ButtonTabsToggle';
 import { PanelOptions } from './components/options/PanelOptions';
 import { PanelControllers } from './components/PanelControllers';
@@ -34,6 +37,8 @@ export const App: React.FC = () => {
   const [hideMenu] = useHashParamBoolean("menuhidden");
   const [mode] = useHashParam("button", undefined);
   const [tab, setTab] = useHashParamInt("tab");
+  // Wire up the metaframe signals, other components can listen more conveniently
+  useMetaframeSignals();
 
   if (hideMenu) {
     if (mode === undefined || mode === "visible" || mode === "invisible") {

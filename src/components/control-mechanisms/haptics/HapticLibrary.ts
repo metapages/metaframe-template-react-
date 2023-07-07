@@ -4,7 +4,7 @@ import { Haptic } from './haptics-common';
 /**
  * Useful class for creating complex haptic patterns
  */
-class HapticInternal {
+export class HapticInternal {
   h: Haptic;
 
   constructor() {
@@ -24,7 +24,18 @@ class HapticInternal {
   }
 
   appendPulse(args: { duration: number; intensity: number }) {
-    const { duration, intensity } = args;
+    let { duration, intensity } = args;
+    intensity = Math.floor(clamp(intensity, 0, 255));
+    this.h.pattern!.push(0);
+    this.h.intensities!.push(0);
+    this.h.pattern!.push(duration);
+    this.h.intensities!.push(intensity);
+    return this;
+  }
+
+  appendPulseNormalized(args: { duration: number; intensity: number }) {
+    let { duration, intensity } = args;
+    intensity = Math.floor(clamp(intensity * 255, 0, 255));
     this.h.pattern!.push(0);
     this.h.intensities!.push(0);
     this.h.pattern!.push(duration);
@@ -56,8 +67,8 @@ class HapticInternal {
   }) {
     let { divisions, duration, endHaptic = 255, startHaptic = 0 } = args;
     const timeIncrement = Math.floor(duration / divisions);
-    endHaptic = clamp(endHaptic, 0, 255);
-    startHaptic = clamp(startHaptic, 0, 255);
+    endHaptic = Math.floor(clamp(endHaptic, 0, 255));
+    startHaptic = Math.floor(clamp(startHaptic, 0, 255));
     const hapticIncrement = Math.floor((endHaptic - startHaptic) / divisions);
     let currentHaptic = startHaptic + hapticIncrement;
     for (let i = 0; i < divisions; i++) {
@@ -139,3 +150,13 @@ export const CannotGoRightHaptic: Haptic = CannotGoLeftHaptic;
 
 export const CannotGoForwardHaptic: Haptic = CannotGoLeftHaptic;
 export const CannotGoBackHaptic: Haptic = CannotGoLeftHaptic;
+
+export const SingleHardShort: Haptic = new HapticInternal()
+.appendPulse({ duration: 20, intensity: 255 })
+.haptic;
+
+export const DoubleHardShort: Haptic = new HapticInternal()
+.appendPulse({ duration: 20, intensity: 255 })
+.appendDelay(30)
+.appendPulse({ duration: 20, intensity: 255 })
+.haptic;

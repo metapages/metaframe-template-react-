@@ -3,6 +3,7 @@ import {
   useState,
 } from 'react';
 
+import { KeyUrlDeviceIO } from '/@/store';
 import { useFormik } from 'formik';
 import * as yup from 'yup';
 
@@ -29,7 +30,7 @@ interface FormType extends yup.InferType<typeof validationSchema> {}
 
 export const ChannelField: React.FC = () => {
   const [urlKey, setUrlKey] = useHashParam(
-    "devicechannel",
+    KeyUrlDeviceIO,
     "superslides-output-visualization"
   );
   const [isTyping, setIsTyping] = useState<boolean>(true);

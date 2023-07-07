@@ -19,7 +19,7 @@ import {
   Tau,
 } from '../common';
 import { CanvasElement } from '../generic/CanvasElement';
-import { useZeroOrientationFromBuffer } from '../hand-os/Filters';
+import { useZeroOrientationFromBufferAutoMatically } from '../hand-os/Filters';
 
 const ThresholdsToMoveSlider = { min: 0.2, max: 0.8 };
 const SliderMoveIncrement = 0.01;
@@ -192,7 +192,7 @@ export const RotaryConstantSpeedSwitchNoPhysics: React.FC<{
     //
     let initialOrientationForHandRotateSelect: number| undefined;
 
-    const processOrientation = useZeroOrientationFromBuffer({bufferSize:30, tolerance: 6});
+    const processOrientation = useZeroOrientationFromBufferAutoMatically({bufferSize:30});
 
     const bindingOrientation = deviceIO.userOrientation.add((rawOrientation: EulerArray) => {
       let { orientation } = processOrientation(rawOrientation);

@@ -3,7 +3,7 @@ import {
   VStack,
 } from '@chakra-ui/react';
 
-import { EmbeddedDeviceConnection } from './hand-os/EmbeddedDeviceConnection';
+import { DeviceIO } from './hand-os/DeviceIO';
 import { PanelHandOs } from './hand-os/PanelHandOs';
 import { useSuperslidesConfig } from './hand-os/useSuperslidesConfig';
 
@@ -16,9 +16,8 @@ export const PanelMain: React.FC = () => {
 
   return (
     <VStack align="flex-start">
-      <EmbeddedDeviceConnection />
-      { menuModel?
-      <PanelHandOs superslides={menuModel} />  : <Box>...</Box>}
+      <DeviceIO />
+      {menuModel ? <PanelHandOs superslides={menuModel} /> : <Box>...</Box>}
     </VStack>
   );
 };

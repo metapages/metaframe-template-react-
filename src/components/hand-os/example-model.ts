@@ -1,6 +1,10 @@
 import { MetapageDefinitionV3 } from '@metapages/metapage';
 
-import { RotateObject1 } from './example-model-metapages';
+import { SlidesProjectorUrl } from './constants';
+import {
+  RotateObject1,
+  RotateObjectEarth,
+} from './example-model-metapages';
 import {
   Menu,
   MenuConfig,
@@ -8,11 +12,14 @@ import {
   MenuItemTypes,
 } from './MenuModel';
 
+const notionKey = "secret_LOPc0zkwYqlBsoK7gUPoRbqE3pjFljW9Bv7Ov0dHjUE";
+
 const menuItemUrlTextSlide1: MenuItemDefinition = {
   id: "text slide 1",
   type: MenuItemTypes.url,
   value: {
-    url: `https://markdown.mtfm.io/#?base64=${btoa("# Slide 1!")}`,
+    // url: `https://markdown.mtfm.io/#?base64=${btoa("# Slide 1!")}`,
+    url: `https://metapages.notion.site/Neurons-in-the-body-sized-proportional-to-neuron-density-5625ba4359ca4457b92c9e21ae82238e?pvs=4`,
   },
 };
 
@@ -57,7 +64,7 @@ const menu1: Menu = {
   state: {
     selectedIndex: -1,
   },
-  sendToSlideProjector: "https://slides-remote.glitch.me/menu-1",
+  sendToSlideProjector: `${SlidesProjectorUrl}/menu-1`,
 };
 
 const menu2: Menu = {
@@ -66,7 +73,7 @@ const menu2: Menu = {
   state: {
     selectedIndex: -1,
   },
-  sendToSlideProjector: "https://slides-remote.glitch.me/menu-2",
+  sendToSlideProjector: `${SlidesProjectorUrl}/menu-2`,
 };
 
 const menuItemGoToMenu1: MenuItemDefinition = {
@@ -100,12 +107,49 @@ const metapageExample1: MenuItemDefinition = {
 }
 menu1.items.push(metapageExample1.id);
 
+const metapageExampleRotateObjectEarth: MenuItemDefinition = {
+  id: "Rotate earth",
+  type: MenuItemTypes.metapage,
+  value: {
+    menu: menu2.id,
+    metapage: RotateObjectEarth as MetapageDefinitionV3,
+  },
+}
+menu1.items.push(metapageExampleRotateObjectEarth.id);
+
+
+const notionSlide1: MenuItemDefinition = {
+  id: "notion slide 1",
+  type: MenuItemTypes.notion,
+  value: {
+    key: notionKey,
+    // page: "https://www.notion.so/metapages/slide-1-32be0e603c004579a7e5ffb60fba415c?pvs=4",
+    page: "32be0e603c004579a7e5ffb60fba415c",
+  },
+}
+menu1.items.push(notionSlide1.id);
+
+const notionSlide2: MenuItemDefinition = {
+  id: "notion slide 2",
+  type: MenuItemTypes.notion,
+  value: {
+    key: notionKey,
+    page: "bc77e33c9e1b4f308e6d5dbcd1920652",
+  },
+}
+menu1.items.push(notionSlide2.id);
+
+
+
 const MENU_ITEMS: MenuItemDefinition[] = [
   ...threeSlidesMenu1,
   ...threeSlidesMenu2,
   metapageExample1,
+  metapageExampleRotateObjectEarth,
   menuItemGoToMenu1,
   menuItemGoToMenu2,
+  notionSlide1,
+  notionSlide2,
 ];
 
 const MENUS: Menu[] = [menu1, menu2];

@@ -28,7 +28,7 @@ import { StepDialSlider } from './control-mechanisms/StepDialSlider';
 import {
   UseBaselineFromBuffer,
 } from './control-mechanisms/UseBaselineFromBuffer';
-import { EmbeddedDeviceConnection } from './hand-os/EmbeddedDeviceConnection';
+import { DeviceIO } from './hand-os/DeviceIO';
 
 /**
  * Just an example very basic output of incoming inputs
@@ -37,14 +37,12 @@ import { EmbeddedDeviceConnection } from './hand-os/EmbeddedDeviceConnection';
 export const PanelControllers: React.FC = () => {
   const [tab, setTab] = useHashParamInt("controller");
 
-
-
   const steps = 5;
   const startStep = 0;
 
   return (
     <VStack align="flex-start">
-      <EmbeddedDeviceConnection />
+      <DeviceIO />
       <ButtonSetBaselineQuaternion />
       <Tabs
         align="start"
@@ -65,15 +63,15 @@ export const PanelControllers: React.FC = () => {
           <Tab>HapticFeedbackTesting</Tab>
         </TabList>
 
-        <TabPanels borderWidth='1px' borderRadius='lg' >
-        <TabPanel >
-            <UseBaselineFromBuffer
-
-            />
+        <TabPanels borderWidth="1px" borderRadius="lg">
+          <TabPanel>
+            <UseBaselineFromBuffer tolerance={0.3} />
           </TabPanel>
-          <TabPanel >
+          <TabPanel>
             <LeftRightSwitchNoPhysics
-              setIncrement={(inc:number)=> {console.log(`inc: ${inc} ${Date.now()}`)}}
+              setIncrement={(inc: number) => {
+                console.log(`inc: ${inc} ${Date.now()}`);
+              }}
               // steps={steps}
               // startStep={startStep}
             />
@@ -82,21 +80,25 @@ export const PanelControllers: React.FC = () => {
             <RotarySwitchNoPhysics
               steps={steps}
               startStep={startStep}
-              setStep={()=> {}}
+              setStep={() => {}}
             />
           </TabPanel>
           <TabPanel>
             <RotaryConstantSpeedSwitchNoPhysics
               steps={steps}
               startStep={startStep}
-              setStep={()=> {}}
+              setStep={() => {}}
             />
           </TabPanel>
           <TabPanel>
             <StepDialRotary />
           </TabPanel>
           <TabPanel>
-            <StepDialSlider steps={steps} startStep={startStep} setStep={()=> {}}/>
+            <StepDialSlider
+              steps={steps}
+              startStep={startStep}
+              setStep={() => {}}
+            />
           </TabPanel>
 
           <TabPanel>
