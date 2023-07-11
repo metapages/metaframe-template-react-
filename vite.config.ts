@@ -1,7 +1,9 @@
-import fs from "fs";
-import { resolve } from "path";
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+import fs from 'fs';
+import { resolve } from 'path';
+import { defineConfig } from 'vite';
+import obfuscatorPlugin from 'vite-plugin-javascript-obfuscator';
+
+import react from '@vitejs/plugin-react';
 
 type DeployTargetType = "glitch" | "lib";
 // values acted on: [glitch | lib]
@@ -29,7 +31,20 @@ export default defineConfig(({ command, mode }) => ({
       "/@": resolve(__dirname, "./src"),
     },
   },
-  plugins: [react()],
+  plugins: [
+    react(),
+    obfuscatorPlugin({
+      include: ["src/**/*.ts"],
+      exclude: [/node_modules/],
+      apply: "build",
+      debugger: true,
+      options: {
+        // your javascript-obfuscator options
+        debugProtection: true,
+        // ...  [See more options](https://github.com/javascript-obfuscator/javascript-obfuscator)
+      },
+    }),
+  ],
   build: {
     outDir: DEPLOY_TARGET === "lib" ? "dist" : OUTDIR,
     target: "esnext",
