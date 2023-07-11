@@ -55,7 +55,7 @@ export const MenuItemTypes: Record<MenuItemActionType, MenuItemActionType> = {
 export type MenuItemActionMenu = { url?: string; menu: string };
 export type MenuItemActionUrl = { url: string };
 export type MenuItemActionMetapage = { metapage: MetapageDefinitionV3 };
-export type MenuItemActionNotion = { key: string, page:string };
+export type MenuItemActionNotion = { key: string, page:string, cache?:boolean };
 
 export interface MenuItemDefinition {
   id: MenuItemId;

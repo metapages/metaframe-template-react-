@@ -54,13 +54,13 @@ export const PanelControllers: React.FC = () => {
         w="100%"
       >
         <TabList>
-          <Tab>UseBaselineFromBuffer</Tab>
-          <Tab>LeftRightSwitchNoPhysics</Tab>
-          <Tab>RotarySwitchNoPhysics</Tab>
-          <Tab>RotaryConstantSpeedSwitchNoPhysics</Tab>
-          <Tab>StepDialRotary</Tab>
-          <Tab>StepDialSlider</Tab>
-          <Tab>HapticFeedbackTesting</Tab>
+          <Tab justifyContent="stretch">UseBaselineFromBuffer</Tab>
+          <Tab justifyContent="stretch">LeftRightSwitchNoPhysics</Tab>
+          <Tab justifyContent="stretch">RotarySwitchNoPhysics</Tab>
+          <Tab justifyContent="stretch">RotaryConstantSpeedSwitchNoPhysics</Tab>
+          <Tab justifyContent="stretch">StepDialRotary</Tab>
+          <Tab justifyContent="stretch">StepDialSlider</Tab>
+          <Tab justifyContent="stretch">HapticFeedbackTesting</Tab>
         </TabList>
 
         <TabPanels borderWidth="1px" borderRadius="lg">

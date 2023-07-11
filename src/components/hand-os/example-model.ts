@@ -1,10 +1,8 @@
 import { MetapageDefinitionV3 } from '@metapages/metapage';
 
 import { SlidesProjectorUrl } from './constants';
-import {
-  RotateObject1,
-  RotateObjectEarth,
-} from './example-model-metapages';
+import { RotateObject1 } from './example-model-metapages';
+import exampleRotateEarth from './example-rotate-earth.metapage.json';
 import {
   Menu,
   MenuConfig,
@@ -13,13 +11,13 @@ import {
 } from './MenuModel';
 
 const notionKey = "secret_LOPc0zkwYqlBsoK7gUPoRbqE3pjFljW9Bv7Ov0dHjUE";
+const notionCache = true;
 
 const menuItemUrlTextSlide1: MenuItemDefinition = {
   id: "text slide 1",
   type: MenuItemTypes.url,
   value: {
-    // url: `https://markdown.mtfm.io/#?base64=${btoa("# Slide 1!")}`,
-    url: `https://metapages.notion.site/Neurons-in-the-body-sized-proportional-to-neuron-density-5625ba4359ca4457b92c9e21ae82238e?pvs=4`,
+    url: `https://markdown.mtfm.io/#?base64=${btoa("# Slide 1!")}`,
   },
 };
 
@@ -94,8 +92,9 @@ const menuItemGoToMenu2: MenuItemDefinition = {
   },
 };
 
-menu1.items.unshift(menuItemGoToMenu2.id);
-menu2.items.unshift(menuItemGoToMenu1.id);
+menu1.items.push(menuItemGoToMenu2.id);
+// menu2.items.unshift(menuItemGoToMenu1.id);
+menu2.items.push(menuItemGoToMenu1.id);
 
 const metapageExample1: MenuItemDefinition = {
   id: "Rotate widget",
@@ -112,7 +111,8 @@ const metapageExampleRotateObjectEarth: MenuItemDefinition = {
   type: MenuItemTypes.metapage,
   value: {
     menu: menu2.id,
-    metapage: RotateObjectEarth as MetapageDefinitionV3,
+    metapage: exampleRotateEarth  as MetapageDefinitionV3, 
+    // RotateObjectEarth as MetapageDefinitionV3,
   },
 }
 menu1.items.push(metapageExampleRotateObjectEarth.id);
@@ -124,20 +124,35 @@ const notionSlide1: MenuItemDefinition = {
   value: {
     key: notionKey,
     // page: "https://www.notion.so/metapages/slide-1-32be0e603c004579a7e5ffb60fba415c?pvs=4",
-    page: "32be0e603c004579a7e5ffb60fba415c",
+    page: "https://www.notion.so/metapages/1st-Slide-show-how-to-hold-the-phone-2bf0e1e1c63049a3ab03d2f437aa05bf?pvs=4",
+    cache: notionCache,
   },
 }
-menu1.items.push(notionSlide1.id);
+menu1.items.unshift(notionSlide1.id);
 
 const notionSlide2: MenuItemDefinition = {
   id: "notion slide 2",
   type: MenuItemTypes.notion,
   value: {
     key: notionKey,
-    page: "bc77e33c9e1b4f308e6d5dbcd1920652",
+    page: "https://www.notion.so/metapages/slide-2-bc77e33c9e1b4f308e6d5dbcd1920652?pvs=4",
+    cache: notionCache,
   },
 }
 menu1.items.push(notionSlide2.id);
+
+const notionProjectAnywhere: MenuItemDefinition = {
+  id: "notion project anywhere",
+  type: MenuItemTypes.notion,
+  value: {
+    key: notionKey,
+    page: "https://www.notion.so/metapages/You-can-project-anywhere-f158fc4a2ea6432496f9e2102f5cd567?pvs=4",
+    cache: notionCache,
+  },
+}
+menu1.items.push(notionProjectAnywhere.id);
+
+
 
 
 
@@ -150,14 +165,9 @@ const MENU_ITEMS: MenuItemDefinition[] = [
   menuItemGoToMenu2,
   notionSlide1,
   notionSlide2,
+  notionProjectAnywhere,
 ];
 
 const MENUS: Menu[] = [menu1, menu2];
 
 export const DemoMenuConfig :MenuConfig = {menus:MENUS, menuItems: MENU_ITEMS};
-
-// export const generateDemoMenu = (channel:string) => {
-//   const menuItems = processAllMenuItems(MENU_ITEMS, channel);
-//   const demoMenu = new MenuModel({menus:MENUS, menuItems});
-//   return demoMenu;
-// }
