@@ -11,7 +11,9 @@ import {
 } from './MenuModel';
 
 const notionKey = "secret_LOPc0zkwYqlBsoK7gUPoRbqE3pjFljW9Bv7Ov0dHjUE";
-const notionCache = true;
+// If you set to false, you are disabling the cache. This is useful for development
+// Leave it true for production
+const notionCache = false;
 
 const menuItemUrlTextSlide1: MenuItemDefinition = {
   id: "text slide 1",
@@ -123,7 +125,6 @@ const notionSlide1: MenuItemDefinition = {
   type: MenuItemTypes.notion,
   value: {
     key: notionKey,
-    // page: "https://www.notion.so/metapages/slide-1-32be0e603c004579a7e5ffb60fba415c?pvs=4",
     page: "https://www.notion.so/metapages/1st-Slide-show-how-to-hold-the-phone-2bf0e1e1c63049a3ab03d2f437aa05bf?pvs=4",
     cache: notionCache,
   },

@@ -1,9 +1,9 @@
 {
-  "name": "@metapages/matterjs-simulation-control",
+  "name": "@metapages/superslides-control",
   "version": "0.1.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/metapages/matterjs-simulation-control"
+    "url": "https://github.com/metapages/superslides-control"
   },
   "files": [
     "dist/**/*",
@@ -12,7 +12,7 @@
   "type": "module",
   "types": "dist/index.d.ts",
   "main": "dist/index.js",
-  "homepage": "https://github.com/metapages/matterjs-simulation-control/tree/main/docs#readme",
+  "homepage": "https://github.com/metapages/superslides-control/tree/main/docs#readme",
   "scripts": {
     "preinstall": "npm set progress=false && npm set audit false && npm config set fund false",
     "start": "just dev",

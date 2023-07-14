@@ -1,3 +1,3 @@
-export const SlidesProjectorUrl = "https://slides-remote.glitch.me";
+// export const SlidesProjectorUrl = "https://slides-remote.glitch.me";
 // For debugging
-// export const SlidesProjectorUrl = "https://slides-remote.localhost:4435";
+export const SlidesProjectorUrl = "https://slides-remote.localhost:4435";
