@@ -1,4 +1,4 @@
-import { MetapageDefinitionV3 } from '@metapages/metapage';
+import {MetapageDefinitionV3} from "@metapages/metapage";
 
 // These data structures represent:
 //   - a cursor position, starting at the first menu
@@ -12,12 +12,12 @@ type MenuId = string;
 // Default: if no selectedIndex, start at 0
 export type MenuType = "Default";
 export const MenuTypes: Record<MenuType, MenuType> = {
-  Default: "Default",
+  Default: "Default"
 };
 
 export type MenuController = "Default";
 
-export type TapDirection = "forward" | "back" | "left" | "right" | "up" | "down";
+export type TapDirection = |"forward" | "back" | "left" | "right" | "up" | "down";
 
 export interface Menu {
   id: MenuId;
@@ -41,7 +41,7 @@ export interface Menu {
 }
 
 // export interface MenuItem {
-//   id: string; // needed for this?
+//   id: string;  needed for this?
 // }
 
 export type MenuItemActionType = "menu" | "url" | "metapage" | "notion";
@@ -49,20 +49,31 @@ export const MenuItemTypes: Record<MenuItemActionType, MenuItemActionType> = {
   menu: "menu",
   url: "url",
   metapage: "metapage",
-  notion: "notion",
+  notion: "notion"
 };
 
-export type MenuItemActionMenu = { url?: string; menu: string };
-export type MenuItemActionUrl = { url: string };
-export type MenuItemActionMetapage = { metapage: MetapageDefinitionV3 };
-export type MenuItemActionNotion = { key: string, page:string, cache?:boolean };
+export type MenuItemActionMenu = {
+  url?: string;
+  menu: string;
+};
+export type MenuItemActionUrl = {
+  url: string;
+};
+export type MenuItemActionMetapage = {
+  metapage: MetapageDefinitionV3;
+};
+export type MenuItemActionNotion = {
+  key: string;
+  page: string;
+  cache?: boolean;
+};
 
 export interface MenuItemDefinition {
   id: MenuItemId;
   name?: string;
 
   type: MenuItemActionType;
-  value?: MenuItemActionMenu | MenuItemActionUrl | MenuItemActionMetapage | MenuItemActionNotion;
+  value?: |MenuItemActionMenu | MenuItemActionUrl | MenuItemActionMetapage | MenuItemActionNotion;
 
   // url: string;
   // wss: string;
@@ -91,7 +102,7 @@ export interface MenuConfig {
  * Make sure that the motion capture router is pointing to the correct channel
  * @param metapage
  */
-const ensureMetapageHasRouterKey = (metapage: MetapageDefinitionV3, key:string ) => {
+const ensureMetapageHasRouterKey = (metapage : MetapageDefinitionV3, key : string) => {
   if (metapage.metaframes) {
     Object.keys(metapage.metaframes).forEach((metaframeKey) => {
       const metaframe = metapage.metaframes[metaframeKey];
@@ -102,20 +113,24 @@ const ensureMetapageHasRouterKey = (metapage: MetapageDefinitionV3, key:string )
       }
     });
   }
-}
+};
 
-const processAllMenuItems = (menuItems: MenuItemDefinition[], channelKey:string) : MenuItemDefinition[] => {
+const processAllMenuItems = (menuItems : MenuItemDefinition[], channelKey : string): MenuItemDefinition[] => {
   return menuItems.map((menuItem) => {
     if (menuItem.type === MenuItemTypes.metapage) {
-      const menuItemCopy : MenuItemDefinition =  { ...menuItem };
-      const metapageThing = {...(menuItemCopy.value as MenuItemActionMetapage)};
+      const menuItemCopy: MenuItemDefinition = {
+        ...menuItem
+      };
+      const metapageThing = {
+        ...(menuItemCopy.value as MenuItemActionMetapage)
+      };
       menuItemCopy.value = metapageThing;
       ensureMetapageHasRouterKey(metapageThing.metapage, channelKey);
       return menuItemCopy;
     }
     return menuItem;
   });
-}
+};
 
 export class MenuModel {
   root: Menu;
@@ -124,12 +139,12 @@ export class MenuModel {
   menuItems: Record<MenuItemId, MenuItemDefinition> = {};
   menuHistory: Menu[];
 
-  constructor(config: MenuConfig, channel: string) {
+  constructor(config : MenuConfig, channel : string) {
     if (config.menus.length === 0) {
-      throw `MenuConfig must have at least one Menu!`
+      throw `MenuConfig must have at least one Menu!`;
     }
     if (!channel) {
-      throw `MenuConfig have a channel!`
+      throw `MenuConfig have a channel!`;
     }
     this.root = config.menus[0];
     this.current = this.root;
@@ -170,10 +185,11 @@ export class MenuModel {
     });
     // run these even though the current is set above because it
     // does a bunch of checks
+    console.log(`new MenuModel: setMenu ${this.root.id}`);
     this.setMenu(this.root.id);
   }
 
-  setMenu(menuId: string): MenuModelCursor {
+  setMenu(menuId : string): MenuModelCursor {
     const menu = this.menus[menuId];
     if (!menu) {
       return this.cursor;
@@ -183,12 +199,9 @@ export class MenuModel {
     const menuType: MenuType = menu.type || MenuTypes.Default;
 
     switch (menuType) {
-      // Make sure this Menu has a selected index
+        // Make sure this Menu has a selected index
       case MenuTypes.Default:
-        if (
-          menu.state.selectedIndex === -1 ||
-          (menu.state.selectedIndex === undefined && menu.items.length > 0)
-        ) {
+        if (menu.state.selectedIndex === -1 || (menu.state.selectedIndex === undefined && menu.items.length > 0)) {
           menu.state.selectedIndex = 0;
         }
         break;
@@ -199,12 +212,10 @@ export class MenuModel {
     return this.setMenuItemSelection(menu.state.selectedIndex);
   }
 
-  setMenuItemSelection(menuItemIndex: number): MenuModelCursor {
+  setMenuItemSelection(menuItemIndex : number): MenuModelCursor {
+    console.log(`setMenuItemSelection ${menuItemIndex}`);
     const currentMenu = this.current;
-    menuItemIndex = Math.max(
-      0,
-      Math.min(menuItemIndex, currentMenu.items.length - 1)
-    );
+    menuItemIndex = Math.max(0, Math.min(menuItemIndex, currentMenu.items.length - 1));
     currentMenu.state.selectedIndex = menuItemIndex;
     this.performMenuItemAction();
     return this.cursor;
@@ -222,12 +233,9 @@ export class MenuModel {
               fetch(this.current.sendToSlideProjector, {
                 method: "POST",
                 headers: {
-                  "Content-Type": "application/json",
+                  "Content-Type": "application/json"
                 },
-                body: JSON.stringify({
-                  type: "url",
-                  value: payloadMenu.url,
-                }),
+                body: JSON.stringify({type: "url", value: payloadMenu.url})
               });
             }
 
@@ -241,35 +249,28 @@ export class MenuModel {
                 method: "POST",
                 redirect: "follow",
                 headers: {
-                  "Content-Type": "application/json",
+                  "Content-Type": "application/json"
                 },
-                body: JSON.stringify({
-                  type: "url",
-                  value: payloadUrl.url,
-                }),
+                body: JSON.stringify({type: "url", value: payloadUrl.url})
               });
             }
 
             break;
-            case "notion":
-              const payloadNotion = menuItem.value as MenuItemActionNotion;
-  
-              if (this.current.sendToSlideProjector) {
-                fetch(this.current.sendToSlideProjector, {
-                  method: "POST",
-                  redirect: "follow",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    type: "notion",
-                    value: payloadNotion,
-                  }),
-                
-                });
-              }
-  
-              break;
+          case "notion":
+            const payloadNotion = menuItem.value as MenuItemActionNotion;
+
+            if (this.current.sendToSlideProjector) {
+              fetch(this.current.sendToSlideProjector, {
+                method: "POST",
+                redirect: "follow",
+                headers: {
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({type: "notion", value: payloadNotion})
+              });
+            }
+
+            break;
           case "metapage":
             const payloadMetapage = menuItem.value as MenuItemActionMetapage;
             const metapageDef = payloadMetapage.metapage;
@@ -278,12 +279,9 @@ export class MenuModel {
                 method: "POST",
                 redirect: "follow",
                 headers: {
-                  "Content-Type": "application/json",
+                  "Content-Type": "application/json"
                 },
-                body: JSON.stringify({
-                  type: "metapage",
-                  value: metapageDef,
-                }),
+                body: JSON.stringify({type: "metapage", value: metapageDef})
               });
             }
 
@@ -298,10 +296,9 @@ export class MenuModel {
   }
 
   getMenuItemSelected(): MenuItemDefinition | undefined {
-    const menuItemId: string | undefined =
-      typeof this.current.state.selectedIndex === "number"
-        ? this.current.items[this.current.state.selectedIndex]
-        : undefined;
+    const menuItemId: string | undefined = typeof this.current.state.selectedIndex === "number"
+      ? this.current.items[this.current.state.selectedIndex]
+      : undefined;
 
     if (menuItemId) {
       return this.menuItems[menuItemId];
@@ -315,13 +312,13 @@ export class MenuModel {
     if (currentMenuIndex <= 0) {
       return {
         ...previous,
-        previous: undefined,
+        previous: undefined
       };
     }
     const newMenuitemIndex = currentMenuIndex - 1;
     return {
       ...this.setMenuItemSelection(newMenuitemIndex),
-      previous,
+      previous
     };
   }
 
@@ -332,13 +329,13 @@ export class MenuModel {
     if (currentMenuIndex >= currentMenu.items.length - 1) {
       return {
         ...previous,
-        previous: undefined,
+        previous: undefined
       };
     }
     const newMenuitemIndex = currentMenuIndex + 1;
     return {
       ...this.setMenuItemSelection(newMenuitemIndex),
-      previous,
+      previous
     };
   }
 
@@ -361,35 +358,28 @@ export class MenuModel {
         this.menuHistory.push(previous.menu);
         return {
           ...this.setMenu(newMenuId),
-          previous,
+          previous
         };
       default:
-        console.log(
-          `❗ MenuModel Unhandled: onMenuFoward where menuItem.type=${menuItem.type}`
-        );
+        console.log(`❗ MenuModel Unhandled: onMenuFoward where menuItem.type=${menuItem.type}`);
         return previous;
     }
   }
 
   onMenuBack(): MenuModelCursor {
     const previous = this.cursor;
-    if (
-      this.menuHistory.length > 0
-    ) {
+    if (this.menuHistory.length > 0) {
       const previousMenu = this.menuHistory.pop()!;
       return {
         ...this.setMenu(previousMenu.id),
-        previous,
+        previous
       };
     }
     return previous;
   }
 
   public get cursor(): MenuModelCursor {
-    return {
-      menu: this.current,
-      item: this.getMenuItemSelected(),
-    };
+    return {menu: this.current, item: this.getMenuItemSelected()};
   }
 
   reset(): MenuModelCursor {
