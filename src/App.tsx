@@ -1,17 +1,20 @@
 import '/@/app.css';
 
-import { ButtonTabsToggle } from '/@/components/ButtonTabsToggle';
+import { useState } from 'react';
+
 import { PanelHelp } from '/@/components/PanelHelp';
 import { PanelMain } from '/@/components/PanelMain';
-import { PanelOptions } from '/@/components/PanelOptions';
+import { FiSettings } from 'react-icons/fi';
 
 import {
-  EditIcon,
+  CopyIcon,
   InfoIcon,
   ViewIcon,
 } from '@chakra-ui/icons';
 import {
+  Box,
   HStack,
+  IconButton,
   Show,
   Spacer,
   Tab,
@@ -19,19 +22,29 @@ import {
   TabPanel,
   TabPanels,
   Tabs,
+  Tooltip,
+  useToast,
+  VStack,
 } from '@chakra-ui/react';
 import {
+  isIframe,
   useHashParam,
-  useHashParamBoolean,
-  useHashParamInt,
 } from '@metapages/hash-query';
 
-export const App: React.FC = () => {
-  const [hideMenu] = useHashParamBoolean("menuhidden");
-  const [mode] = useHashParam("button", undefined);
-  const [tab, setTab] = useHashParamInt("tab");
+import {
+  ButtonTabsToggle,
+} from './components/options/components/ButtonTabsToggle';
+import { PanelOptions } from './components/options/PanelOptions';
 
-  if (hideMenu) {
+const isFramed = isIframe();
+
+export const App: React.FC = () => {
+  const [menuhidden, setMenuHidden] = useState<boolean>(isFramed);
+  const [mode] = useHashParam("hm", undefined);
+  const [tab, setTab] = useState<number>(0);
+  const toast = useToast();
+
+  if (menuhidden) {
     if (mode === undefined || mode === "visible" || mode === "invisible") {
       return (
         <>
@@ -42,43 +55,76 @@ export const App: React.FC = () => {
           >
             <Spacer />
             <Show breakpoint="(min-width: 200px)">
-              <ButtonTabsToggle />
+              <ButtonTabsToggle menuhidden={menuhidden} setMenuHidden={setMenuHidden} mode={mode}/>
             </Show>
           </HStack>
           <PanelMain />
         </>
       );
-    } else if (mode === "hidden") {
+    } else if (mode === "disabled") {
       return <PanelMain />;
     }
   }
   return (
-    <Tabs index={tab || 0} isLazy={true} onChange={setTab}>
-      <TabList>
-        <Tab>
-          <ViewIcon /> &nbsp; Main panel
-        </Tab>
-        <Tab>
-          <EditIcon /> &nbsp; Options
-        </Tab>
-        <Tab>
-          <InfoIcon />
-          &nbsp; Help
-        </Tab>
-        <Spacer /> <ButtonTabsToggle />
-      </TabList>
+    <VStack align="flex-start" w="100%">
+      <Tabs index={tab || 0} isLazy={true} onChange={setTab} w="100%">
+        <TabList>
+          <Tab>
+            <Tooltip label="View markdown page">
+              <HStack spacing="0px">
+                <ViewIcon />
+                <Box>&nbsp; Main</Box>
+              </HStack>
+            </Tooltip>
+          </Tab>
+          <Tab>
+            <Tooltip label="Customize page">
+              <HStack spacing="0px">
+                <FiSettings />
+                <Box>&nbsp; Options</Box>
+              </HStack>
+            </Tooltip>
+          </Tab>
+          <Tab>
+            <Tooltip label="Documentation">
+              <HStack spacing="0px">
+                <InfoIcon />
+                <Box>&nbsp; Help</Box>
+              </HStack>
+            </Tooltip>
+          </Tab>
+          <Tooltip label="Copy URL to clipboard">
+            <IconButton
+              aria-label="copy url"
+              variant="ghost"
+              icon={<CopyIcon />}
+              onClick={() => {
+                window.navigator.clipboard.writeText(window.location.href);
+                toast({
+                  title: "Copied URL to clipboard",
+                  status: "success",
+                  duration: 2000,
+                  isClosable: true,
+                });
+              }}
+            />
+          </Tooltip>
+          <Spacer />
+          <ButtonTabsToggle menuhidden={menuhidden} setMenuHidden={setMenuHidden} mode={mode} />
+        </TabList>
 
-      <TabPanels>
-        <TabPanel>
-          <PanelMain />
-        </TabPanel>
-        <TabPanel>
-          <PanelOptions />
-        </TabPanel>
-        <TabPanel>
-          <PanelHelp />
-        </TabPanel>
-      </TabPanels>
-    </Tabs>
+        <TabPanels>
+          <TabPanel>
+            <PanelMain />
+          </TabPanel>
+          <TabPanel>
+            <PanelOptions />
+          </TabPanel>
+          <TabPanel>
+            <PanelHelp />
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
+    </VStack>
   );
 };
