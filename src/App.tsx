@@ -1,50 +1,32 @@
 import '/@/app.css';
 
-import { useState } from 'react';
-
-import { PanelHelp } from '/@/components/PanelHelp';
-import { PanelMain } from '/@/components/PanelMain';
-import { FiSettings } from 'react-icons/fi';
+import { useStore } from '/@/store';
 
 import {
-  CopyIcon,
-  InfoIcon,
-  ViewIcon,
-} from '@chakra-ui/icons';
-import {
-  Box,
   HStack,
-  IconButton,
   Show,
   Spacer,
-  Tab,
-  TabList,
-  TabPanel,
-  TabPanels,
-  Tabs,
-  Tooltip,
-  useToast,
-  VStack,
+  useMediaQuery,
 } from '@chakra-ui/react';
-import {
-  isIframe,
-  useHashParam,
-} from '@metapages/hash-query';
+import { useHashParam } from '@metapages/hash-query';
 
 import {
   ButtonTabsToggle,
-} from './components/options/components/ButtonTabsToggle';
-import { PanelOptions } from './components/options/PanelOptions';
-
-const isFramed = isIframe();
+} from './components/header/components/ButtonTabsToggle';
+import { HeaderFull } from './components/header/HeaderFull';
+import { HeaderMinimal } from './components/header/HeaderMinimal';
+import { PanelMain } from './components/main/PanelMain';
+import { MinScreenWidthToShowFullHeader } from './constants';
 
 export const App: React.FC = () => {
-  const [menuhidden, setMenuHidden] = useState<boolean>(isFramed);
-  const [mode] = useHashParam("hm", undefined);
-  const [tab, setTab] = useState<number>(0);
-  const toast = useToast();
+  const editMode = useStore((state) => state.editMode);
 
-  if (menuhidden) {
+  const [mode] = useHashParam("hm", undefined);
+  const [isLargerEnoughForFullHeader] = useMediaQuery(
+    `(min-width: ${MinScreenWidthToShowFullHeader})`
+  );
+
+  if (!editMode) {
     if (mode === undefined || mode === "visible" || mode === "invisible") {
       return (
         <>
@@ -55,7 +37,9 @@ export const App: React.FC = () => {
           >
             <Spacer />
             <Show breakpoint="(min-width: 200px)">
-              <ButtonTabsToggle menuhidden={menuhidden} setMenuHidden={setMenuHidden} mode={mode}/>
+              <HStack p={1} spacing={4} align="center">
+                <ButtonTabsToggle mt={1} />
+              </HStack>
             </Show>
           </HStack>
           <PanelMain />
@@ -65,66 +49,6 @@ export const App: React.FC = () => {
       return <PanelMain />;
     }
   }
-  return (
-    <VStack align="flex-start" w="100%">
-      <Tabs index={tab || 0} isLazy={true} onChange={setTab} w="100%">
-        <TabList>
-          <Tab>
-            <Tooltip label="View markdown page">
-              <HStack spacing="0px">
-                <ViewIcon />
-                <Box>&nbsp; Main</Box>
-              </HStack>
-            </Tooltip>
-          </Tab>
-          <Tab>
-            <Tooltip label="Customize page">
-              <HStack spacing="0px">
-                <FiSettings />
-                <Box>&nbsp; Options</Box>
-              </HStack>
-            </Tooltip>
-          </Tab>
-          <Tab>
-            <Tooltip label="Documentation">
-              <HStack spacing="0px">
-                <InfoIcon />
-                <Box>&nbsp; Help</Box>
-              </HStack>
-            </Tooltip>
-          </Tab>
-          <Tooltip label="Copy URL to clipboard">
-            <IconButton
-              aria-label="copy url"
-              variant="ghost"
-              icon={<CopyIcon />}
-              onClick={() => {
-                window.navigator.clipboard.writeText(window.location.href);
-                toast({
-                  title: "Copied URL to clipboard",
-                  status: "success",
-                  duration: 2000,
-                  isClosable: true,
-                });
-              }}
-            />
-          </Tooltip>
-          <Spacer />
-          <ButtonTabsToggle menuhidden={menuhidden} setMenuHidden={setMenuHidden} mode={mode} />
-        </TabList>
 
-        <TabPanels>
-          <TabPanel>
-            <PanelMain />
-          </TabPanel>
-          <TabPanel>
-            <PanelOptions />
-          </TabPanel>
-          <TabPanel>
-            <PanelHelp />
-          </TabPanel>
-        </TabPanels>
-      </Tabs>
-    </VStack>
-  );
+  return isLargerEnoughForFullHeader ? <HeaderFull /> : <HeaderMinimal />;
 };

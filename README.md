@@ -1,17 +1,79 @@
-# [Metaframe](https://metapages.org/) template repository with React and Chakra UI
+# [Metaframe](https://metapage.io/) template
 
-  - User docs: [./public/README.md](./public/README.md)
-  - Developer docs: [./README-developer.md](./README-developer.md)
+## Getting started
 
-Example metaframes: https://github.com/metapages?q=metaframe&type=all&language=&sort=
+  `just dev`
+    - Modify code and publish:
+    - `just publish`
 
-The is a template repository (so fork and run) for creating a [metaframe](https://metapages.org/) with the following features
-  - minimal host requirements:
-    - [just](https://github.com/casey/just)
-    - [docker](https://docs.docker.com/get-started/)
-    - [deno](https://deno.land/manual/getting_started/installation)
-    - [mkcert](https://github.com/FiloSottile/mkcert#installation)
-  - automatic https certificate generation
-  - single command development (`just dev`)
-  - single command publishing to [npm](https://www.npmjs.com/)
-  - single command publishing to [github pages](https://pages.github.com/)
+## About
+
+Fast creation and deployment of advanced [metaframe](https://metapage.io/) websites.
+
+Target audience: developers building [metaframes](https://metapage.io/) or any static website where having the core tools of development, building and publishing are packaged and require a small number of commands.
+
+It has everything you need to get a connectable [metaframe](https://metapage.io/) website up and running and deployed.
+
+## Fork and modify
+
+1) Fork OR Create new repository
+   - Fork
+   - Create new repository
+      1) Clone the new repository and go there in the terminal
+      2) `git remote add upstream git@github.com:metapages/metaframe-template-react.git`
+      3) `git fetch upstream`
+      4) `git checkout -b upstream upstream/main`
+      5) `git branch -d main`
+      6) `git checkout -b main`
+      7) `git push -u origin main`
+2) Change in `package.json`:
+   - `name` to your npm module name
+     - This repo keeps the npm module name in `package.json` close to the github repo name:
+       - npm: `@metapages/metaframe-...?`
+       - git: `metapages/metaframe-...?`
+   - `repository.url`
+   - `homepage`
+   - `version`: set this to e.g. `0.1.0` or whatever you need
+3) Change in `index.html`: `<title> ... </title>`
+4) Meet [host requirements](#host-requirements)
+5) Maybe change `APP_FQDN` and `APP_PORT` in `.env` (create if needed) to avoid origin collisions
+6) Type `just` and go from there
+
+## Host requirements
+
+  - [just](https://github.com/casey/just)
+  - [docker](https://docs.docker.com/get-started/)
+  - [deno](https://deno.land/manual/getting_started/installation)
+  - [mkcert](https://github.com/FiloSottile/mkcert#installation)
+
+That's it. Commands are self-documenting: just type `just`
+
+## Features
+
+   - automatic https certificate generation
+   - single command development (`just dev`)
+   - single command publishing to [npm](https://www.npmjs.com/)
+   - single command publishing to [github pages](https://pages.github.com/)
+   - `vite` for fast building
+   - `react` for efficient, fast loading sites
+   - `typescript` for type checking
+   - `chakra-ui.com` for the UI framework
+   - `just` for a single method to build/test/deploy/publish
+   - [Github Pages](https://pages.github.com/) publishing
+     - automatic versioning:
+       - `/`: latest
+       - `/v1.5.2/`: that version tag (so all published versions are available forever)
+   - Common UI elements
+     - Help button showing the (rendered) local `./Readme.md` file
+     - Options (configurable) stored encoded in the URL hash params
+   - Metaframe outputs updated below, when connected.
+   - `just`file powered, dockerized, automated with dual human/CI controls
+
+## Assumptions:
+
+ - `just` will be the command runner, not `npm` (directly) or `make` or any other underlying tech specific command runner. `just` is the main entry point to control all aspects of the software lifecycle.
+   - Prefer contextual error messages with calls to action over documentation that is not as close as possible to the code or commands. Distance creates indirection and staleness and barriers to keep updated.
+ - You are building to publish at github pages with the url: `https://<user_org>.github.io/<repo-name>/`
+   - github pages 👆 comes with limited options for some config:
+     - we build browser assets in `./docs` instead of `./dist` (typical default) so that publishing to github pages is less configuration
+ - Operating this repository should be "easy" and enjoyable. It's a product of love and passion, I am hoping that you enjoy using at least just a little bit.

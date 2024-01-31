@@ -61,6 +61,7 @@ export const PanelOptions: React.FC = () => {
       gap="1rem"
       justifyContent="flex-start"
       alignItems="stretch"
+      p="1rem"
     >
       <RadioButtonMode />
 

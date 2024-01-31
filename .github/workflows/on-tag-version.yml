@@ -9,13 +9,6 @@ on:
   push:
     tags:
       - "v*"
-    # branches:
-    #   - "main"
-
-env:
-  DOCKER_COMPOSE_VERSION: 1.25.4
-  DOCKER_BUILDKIT: 1
-  COMPOSE_DOCKER_CLI_BUILD: 1
 
 jobs:
   on-tag-version:
@@ -43,4 +36,4 @@ jobs:
           deno-version: v1.32.1
 
       - name: on-tag-version
-        run: just on-tag-version
+        run: just _on-tag-version

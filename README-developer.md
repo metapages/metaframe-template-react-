@@ -1,10 +1,22 @@
-# [Metaframe](https://metapages.org/) template
+# [Metaframe](https://metapage.io/) template
 
-Fast creation and deployment of advanced [metaframe](https://metapages.org/) websites.
+## Getting started
 
-Target audience: developers building [metaframes](https://metapages.org/) or any static website where having the core tools of development, building and publishing are packaged and require a small number of commands.
+  `just dev`
+    - Modify code and publish:
+    - `just publish`
 
-It has everything you need to get a connectable [metaframe](https://metapages.org/) website up and running and deployed.
+## About
+
+Fast creation and deployment of advanced [metaframe](https://metapage.io/) websites.
+
+Target audience: developers building [metaframes](https://metapage.io/) or any static website where having the core tools of development, building and publishing are packaged and require a small number of commands.
+
+It has everything you need to get a connectable [metaframe](https://metapage.io/) website up and running and deployed.
+
+
+
+
 
 ## Fork and modify
 
@@ -60,14 +72,10 @@ That's it. Commands are self-documenting: just type `just`
    - `typescript` for type checking
    - `chakra-ui.com` for the UI framework
    - `just` for a single method to build/test/deploy/publish
-   - `docker` because I don't want to touch/rely your host system except where needed
    - [Github Pages](https://pages.github.com/) publishing
      - automatic versioning:
        - `/`: latest
        - `/v1.5.2/`: that version tag (so all published versions are available forever)
-   - [npm](https://www.npmjs.com/) module publishing
-     - automatic versioning, linked with above
-     - external package versioned with the publised website
    - Common UI elements
      - Help button showing the (rendered) local `./Readme.md` file
      - Options (configurable) stored encoded in the URL hash params
