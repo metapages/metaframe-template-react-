@@ -1,7 +1,14 @@
 import "@fontsource-variable/jetbrains-mono";
-import { defineStyle, defineStyleConfig, extendTheme } from "@chakra-ui/react";
+import { extendTheme } from "@chakra-ui/react";
 import { defaultColors } from "./colors";
 import { contentHeight, footerHeight, headerHeight, panelHeaderHeight } from "./constants";
+import { Input } from './components/Input';
+import { Code } from './components/Code';
+import { Button } from './components/Button';
+import { Icon } from './components/Icon';
+import { Tabs } from './components/Tabs';
+import { Table } from './components/Table';
+import { Text } from './components/Text';
 
 const getColor = (theme: any, color: string, fallback: string): string => {
   const chakraColor = color.split(".");
@@ -14,25 +21,6 @@ const getColor = (theme: any, color: string, fallback: string): string => {
 
   return theme.colors[fallback]["300"];
 };
-
-export const inputTheme = defineStyleConfig({
-  defaultProps: {
-    size: "sm",
-    variant: "outline",
-  },
-});
-
-export const buttonTheme = defineStyleConfig({
-  defaultProps: {
-    size: "sm",
-    variant: "solid",
-  },
-});
-
-export const codeTheme = defineStyle({
-  fontSize: "0.9rem",
-  fontWeight: 500,
-});
 
 const theme = extendTheme(defaultColors, {
   sizes: {
@@ -49,47 +37,13 @@ const theme = extendTheme(defaultColors, {
     mono: `'JetBrains Mono Variable', monospace`,
   },
   components: {
-    Text: {
-      baseStyle: (props: any) => {
-        return {
-          color: props.color || "gray.600",
-          fontSize: props.fontSize || "0.9rem",
-        };
-      },
-    },
-    Icon: {
-      baseStyle: (props: any) => {
-        return {
-          color: props.color || "gray.600",
-          boxSize: props.boxSize || "1.2rem",
-          cursor: props.cursor || "pointer",
-        };
-      },
-    },
-    Input: {
-      ...inputTheme,
-      variants: {
-        outline: {
-          field: {
-            bg: "#ECECEC !important",
-            border: "1px solid",
-            borderRadius: "5px",
-            borderColor: "gray.300",
-            _hover: {
-              borderColor: "gray.87",
-            },
-            _focusVisible: {
-              outline: "none",
-              borderColor: "gray.87",
-              boxShadow: "0 0 0 0px transparent !important",
-            },
-          },
-        },
-      },
-    },
-    Code: {
-      variants: { subtle: codeTheme },
-    },
+    Text,
+    Icon,
+    Input,
+    Code,
+    Tabs,
+    Table,
+    Button,
     PanelContainer: {
       baseStyle: {
         bg: "gray.100",
@@ -106,53 +60,6 @@ const theme = extendTheme(defaultColors, {
         maxHeight: 6,
         borderBottom: "1px solid",
         borderColor: "gray.300",
-      },
-    },
-    Tabs: {
-      variants: {
-        line: {
-          tab: {
-            border: "none",
-            borderBottom: "none",
-            color: "none",
-            borderColor: "none",
-            bg: "gray.300",
-            _selected: {
-              border: "none",
-              borderColor: "none",
-              color: "none",
-              bg: "none",
-              borderBottom: "none",
-            },
-          },
-          tablist: {
-            borderBottom: "0px solid",
-          },
-        },
-      },
-    },
-    Table: {
-      variants: {
-        simple: {
-          td: {
-            fontSize: "0.8rem",
-            borderColor: "gray.87",
-          },
-          thead: {
-            borderBottom: "1px solid var(--chakra-colors-gray-87)",
-          },
-        },
-      },
-    },
-    Button: {
-      ...buttonTheme,
-      variants: {
-        solid: (props: any) => {
-          return {
-            fontSize: props.fontSize || "0.9rem",
-            fontWeight: props.fontWeight || 400,
-          };
-        },
       },
     },
   },
